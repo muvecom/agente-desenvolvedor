@@ -178,6 +178,7 @@
             display: flex;
             justify-content: space-between;
             margin-bottom: 20px;
+            align-items: center;
         }
         
         .mode-toggle {
@@ -291,7 +292,7 @@
             <div id="alert-area"></div>
             
             <div class="form-group">
-                <label for="briefing" class="required">Briefing (arquivo DOCX)</label>
+                <label for="briefing">Briefing (arquivo DOCX - opcional)</label>
                 <input type="file" id="briefing" accept=".docx">
                 <small>Envie um documento DOCX contendo as instruções para o agente</small>
             </div>
@@ -308,12 +309,6 @@
                 <small>Instruções extras que complementam o briefing principal</small>
             </div>
             
-            <div class="form-group">
-                <label for="memory">Memória do Agente (opcional)</label>
-                <textarea id="memory" placeholder="Insira informações de contexto ou memória para o agente"></textarea>
-                <small>Informações de contexto que o agente deve lembrar durante as interações</small>
-            </div>
-            
             <button id="generate-btn" class="btn">Gerar Prompt</button>
         </div>
         
@@ -322,12 +317,11 @@
             
             <div class="test-controls">
                 <div class="mode-toggle">
-                    <span>Modo Automático</span>
+                    <span>Testar Automaticamente?</span>
                     <label class="switch">
-                        <input type="checkbox" id="test-mode">
+                        <input type="checkbox" id="test-mode" checked>
                         <span class="slider"></span>
                     </label>
-                    <span>Modo Manual</span>
                 </div>
                 
                 <button id="start-test-btn" class="btn btn-success">Iniciar Teste</button>
@@ -347,13 +341,8 @@
             
             <div id="auto-test" class="hidden">
                 <div class="form-group">
-                    <label for="test-scenarios">Cenários de Teste (opcional)</label>
-                    <textarea id="test-scenarios" placeholder="Descreva cenários para testar o agente automaticamente"></textarea>
-                    <small>Um cenário por linha. Deixe em branco para usar cenários padrão.</small>
-                </div>
-                <div class="form-group">
                     <label for="test-iterations">Número de Iterações</label>
-                    <input type="text" id="test-iterations" value="5" placeholder="Número de testes a serem executados">
+                    <input type="number" id="test-iterations" value="5" min="1" max="20" placeholder="Número de testes a serem executados">
                 </div>
             </div>
         </div>
@@ -365,11 +354,6 @@
                 <label for="password" class="required">Senha para Download</label>
                 <input type="password" id="password" placeholder="Insira a senha para baixar o agente">
                 <small>A senha é necessária para acessar o template do agente</small>
-            </div>
-            
-            <div class="form-group">
-                <label for="agent-name">Nome do Agente (opcional)</label>
-                <input type="text" id="agent-name" placeholder="Digite um nome para o agente">
             </div>
             
             <button id="download-btn" class="btn btn-success">Baixar Agente</button>
@@ -386,7 +370,6 @@
             const briefingInput = document.getElementById('briefing');
             const tokenInput = document.getElementById('token');
             const promptInput = document.getElementById('prompt');
-            const memoryInput = document.getElementById('memory');
             const generateBtn = document.getElementById('generate-btn');
             const testModeToggle = document.getElementById('test-mode');
             const startTestBtn = document.getElementById('start-test-btn');
@@ -395,16 +378,14 @@
             const autoTest = document.getElementById('auto-test');
             const userInput = document.getElementById('user-input');
             const sendMessageBtn = document.getElementById('send-message-btn');
-            const testScenarios = document.getElementById('test-scenarios');
             const testIterations = document.getElementById('test-iterations');
             const passwordInput = document.getElementById('password');
-            const agentNameInput = document.getElementById('agent-name');
             const downloadBtn = document.getElementById('download-btn');
             const alertArea = document.getElementById('alert-area');
             
             // Variáveis de estado
             let generatedPrompt = '';
-            let isManualMode = true;
+            let isAutoMode = true;
             let chatHistory = [];
             
             // Event Listeners
@@ -432,30 +413,41 @@
                     return;
                 }
                 
-                // Simulação de geração de prompt (no backend real, isso seria uma chamada para um webhook)
+                // Preparar dados para enviar ao webhook
+                const formData = new FormData();
+                if (briefingInput.files.length) {
+                    formData.append('briefing', briefingInput.files[0]);
+                }
+                formData.append('token', tokenInput.value);
+                if (promptInput.value.trim()) {
+                    formData.append('prompt', promptInput.value);
+                }
+                
                 showAlert('Gerando prompt a partir do briefing...', 'success');
                 
-                // Simulando um atraso de processamento
-                setTimeout(() => {
-                    generatedPrompt = "Prompt gerado com base no briefing fornecido. " + 
-                                     (promptInput.value.trim() ? "Complementado com: " + promptInput.value : "");
-                    showAlert('Prompt gerado com sucesso! Agora você pode testar o agente.', 'success');
-                    
-                    // Habilitar o teste
-                    startTestBtn.disabled = false;
-                }, 2000);
+                // Chamar o webhook para gerar o prompt
+                fetch('https://api.muvecom.com.br/v1/agente-criador/generate', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        generatedPrompt = data.generatedPrompt;
+                        showAlert('Prompt gerado com sucesso! Agora você pode testar o agente.', 'success');
+                        startTestBtn.disabled = false;
+                    } else {
+                        showAlert('Erro ao gerar prompt: ' + data.message, 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro:', error);
+                    showAlert('Erro ao conectar com o servidor', 'error');
+                });
             }
             
             function toggleTestMode() {
-                isManualMode = !testModeToggle.checked;
-                
-                if (isManualMode) {
-                    manualTest.classList.remove('hidden');
-                    autoTest.classList.add('hidden');
-                } else {
-                    manualTest.classList.add('hidden');
-                    autoTest.classList.remove('hidden');
-                }
+                isAutoMode = testModeToggle.checked;
             }
             
             function startTest() {
@@ -466,19 +458,20 @@
                 
                 // Mostrar a área de chat
                 chatContainer.classList.remove('hidden');
+                chatContainer.innerHTML = '';
                 
-                if (isManualMode) {
-                    manualTest.classList.remove('hidden');
-                    autoTest.classList.add('hidden');
-                    
-                    // Adicionar mensagem inicial
-                    addMessage('Sistema', 'Modo manual ativado. Digite uma mensagem para testar o agente.', 'ai');
-                } else {
+                if (isAutoMode) {
                     manualTest.classList.add('hidden');
                     autoTest.classList.remove('hidden');
                     
                     // Iniciar teste automático
                     startAutoTest();
+                } else {
+                    manualTest.classList.remove('hidden');
+                    autoTest.classList.add('hidden');
+                    
+                    // Adicionar mensagem inicial
+                    addMessage('Sistema', 'Modo manual ativado. Digite uma mensagem para testar o agente.', 'ai');
                 }
             }
             
@@ -490,59 +483,74 @@
                 addMessage('Você', message, 'user');
                 userInput.value = '';
                 
-                // Simular resposta da IA (no backend real, isso seria uma chamada para um webhook)
-                simulateAIResponse(message);
-            }
-            
-            function simulateAIResponse(userMessage) {
-                // Simular processamento
-                setTimeout(() => {
-                    const responses = [
-                        "Entendi sua solicitação. Posso ajudar com isso.",
-                        "Com base nas informações fornecidas, aqui está minha resposta...",
-                        "Analisando sua pergunta, acho que posso sugerir o seguinte...",
-                        "Ótima pergunta! Deixe-me elaborar uma resposta completa."
-                    ];
-                    
-                    const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-                    addMessage('Agente', randomResponse, 'ai');
-                }, 1000);
+                // Enviar mensagem para o webhook
+                fetch('https://api.muvecom.com.br/v1/agente-criador/test', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        prompt: generatedPrompt,
+                        userMessage: message,
+                        token: tokenInput.value,
+                        testMode: 'manual',
+                        chatHistory: chatHistory
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        addMessage('Agente', data.response, 'ai');
+                    } else {
+                        addMessage('Sistema', 'Erro: ' + data.message, 'ai');
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro:', error);
+                    addMessage('Sistema', 'Erro ao conectar com o servidor', 'ai');
+                });
             }
             
             function startAutoTest() {
                 addMessage('Sistema', 'Iniciando teste automático do agente...', 'ai');
                 
-                // Obter cenários de teste
-                const scenarios = testScenarios.value.trim() ? 
-                    testScenarios.value.split('\n').filter(s => s.trim()) : 
-                    [
-                        "Apresente-se",
-                        "Qual é o seu propósito?",
-                        "Como você pode me ajudar?",
-                        "Quais são suas capacidades?",
-                        "Você pode me dar um exemplo do que pode fazer?"
-                    ];
-                
                 const iterations = parseInt(testIterations.value) || 5;
-                let currentIteration = 0;
                 
-                // Executar testes automaticamente
-                const testInterval = setInterval(() => {
-                    if (currentIteration >= iterations) {
-                        clearInterval(testInterval);
+                // Iniciar teste automático via webhook
+                fetch('https://api.muvecom.com.br/v1/agente-criador/test', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        prompt: generatedPrompt,
+                        token: tokenInput.value,
+                        testMode: 'auto',
+                        iterations: iterations
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Exibir resultados do teste automático
+                        if (data.testResults && data.testResults.length) {
+                            data.testResults.forEach(result => {
+                                addMessage('Teste', `Pergunta: ${result.question}`, 'user');
+                                addMessage('Agente', `Resposta: ${result.response}`, 'ai');
+                                if (result.evaluation) {
+                                    addMessage('Sistema', `Avaliação: ${result.evaluation}`, 'ai');
+                                }
+                            });
+                        }
                         addMessage('Sistema', 'Teste automático concluído!', 'ai');
-                        return;
+                    } else {
+                        addMessage('Sistema', 'Erro no teste: ' + data.message, 'ai');
                     }
-                    
-                    const scenario = scenarios[currentIteration % scenarios.length];
-                    addMessage('Sistema', `Teste ${currentIteration + 1}: "${scenario}"`, 'ai');
-                    
-                    // Simular envio de mensagem e resposta
-                    addMessage('Testador', scenario, 'user');
-                    simulateAIResponse(scenario);
-                    
-                    currentIteration++;
-                }, 2500);
+                })
+                .catch(error => {
+                    console.error('Erro:', error);
+                    addMessage('Sistema', 'Erro ao conectar com o servidor', 'ai');
+                });
             }
             
             function addMessage(sender, text, type) {
@@ -577,32 +585,38 @@
                     return;
                 }
                 
-                // Simular download (no backend real, isso seria uma chamada para um webhook)
                 showAlert('Baixando agente...', 'success');
                 
-                // Simular processamento
-                setTimeout(() => {
-                    const agentName = agentNameInput.value.trim() || 'novo_agente';
-                    
-                    // Criar um link de download simulado
-                    const data = {
-                        prompt: generatedPrompt,
+                // Solicitar download do agente via webhook
+                fetch('https://api.muvecom.com.br/v1/agente-criador/download', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        password: passwordInput.value,
                         token: tokenInput.value,
-                        memory: memoryInput.value,
-                        chatHistory: chatHistory,
-                        timestamp: new Date()
-                    };
-                    
-                    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data, null, 2));
-                    const downloadAnchorNode = document.createElement('a');
-                    downloadAnchorNode.setAttribute("href", dataStr);
-                    downloadAnchorNode.setAttribute("download", agentName + ".json");
-                    document.body.appendChild(downloadAnchorNode);
-                    downloadAnchorNode.click();
-                    downloadAnchorNode.remove();
-                    
+                        prompt: generatedPrompt,
+                        complementaryPrompt: promptInput.value
+                    })
+                })
+                .then(response => response.blob())
+                .then(blob => {
+                    // Criar um link para download do arquivo
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = 'agente.json';
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
                     showAlert('Agente baixado com sucesso!', 'success');
-                }, 1500);
+                })
+                .catch(error => {
+                    console.error('Erro:', error);
+                    showAlert('Erro ao baixar o agente', 'error');
+                });
             }
             
             function showAlert(message, type) {
