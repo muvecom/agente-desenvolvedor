@@ -3,56 +3,72 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Configuração de Agente IA - n8n</title>
+    <title>Agente Criador</title>
     <style>
         :root {
-            --primary-color: #4a6cf7;
-            --secondary-color: #6c757d;
-            --success-color: #28a745;
-            --danger-color: #dc3545;
+            --primary-color: #4a6fa5;
+            --secondary-color: #166088;
+            --accent-color: #4cb5f5;
             --light-color: #f8f9fa;
             --dark-color: #343a40;
-            --border-radius: 8px;
-            --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --success-color: #28a745;
+            --danger-color: #dc3545;
+            --warning-color: #ffc107;
         }
         
         * {
+            box-sizing: border-box;
             margin: 0;
             padding: 0;
-            box-sizing: border-box;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
         
         body {
-            background-color: #f5f7fb;
+            background-color: #f5f7f9;
             color: #333;
             line-height: 1.6;
-            padding: 20px;
         }
         
         .container {
-            max-width: 800px;
+            max-width: 1200px;
             margin: 0 auto;
-            background-color: white;
-            border-radius: var(--border-radius);
-            padding: 30px;
-            box-shadow: var(--box-shadow);
+            padding: 20px;
         }
         
         header {
             text-align: center;
             margin-bottom: 30px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid #eee;
+            padding: 20px;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
         
-        header h1 {
-            color: var(--primary-color);
+        h1 {
+            font-size: 2.5rem;
             margin-bottom: 10px;
         }
         
-        header p {
+        .description {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        }
+        
+        .card-title {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
             color: var(--secondary-color);
+            border-bottom: 2px solid var(--accent-color);
+            padding-bottom: 10px;
         }
         
         .form-group {
@@ -63,22 +79,17 @@
             display: block;
             margin-bottom: 8px;
             font-weight: 600;
-            color: var(--dark-color);
         }
         
-        input, textarea {
+        input[type="text"],
+        input[type="password"],
+        input[type="file"],
+        textarea {
             width: 100%;
-            padding: 12px 15px;
+            padding: 12px;
             border: 1px solid #ddd;
-            border-radius: var(--border-radius);
-            font-size: 16px;
-            transition: border-color 0.3s;
-        }
-        
-        input:focus, textarea:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(74, 108, 247, 0.1);
+            border-radius: 4px;
+            font-size: 1rem;
         }
         
         textarea {
@@ -86,79 +97,183 @@
             resize: vertical;
         }
         
+        .required::after {
+            content: " *";
+            color: var(--danger-color);
+        }
+        
         .btn {
-            display: block;
-            width: 100%;
-            padding: 14px;
+            display: inline-block;
+            padding: 12px 24px;
             background-color: var(--primary-color);
             color: white;
             border: none;
-            border-radius: var(--border-radius);
-            font-size: 16px;
-            font-weight: 600;
+            border-radius: 4px;
             cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
             transition: background-color 0.3s;
-            margin-top: 10px;
         }
         
         .btn:hover {
-            background-color: #3a5ad9;
+            background-color: var(--secondary-color);
         }
         
-        .alert {
+        .btn-success {
+            background-color: var(--success-color);
+        }
+        
+        .btn-success:hover {
+            background-color: #218838;
+        }
+        
+        .btn-warning {
+            background-color: var(--warning-color);
+            color: var(--dark-color);
+        }
+        
+        .btn-warning:hover {
+            background-color: #e0a800;
+        }
+        
+        .btn-danger {
+            background-color: var(--danger-color);
+        }
+        
+        .btn-danger:hover {
+            background-color: #c82333;
+        }
+        
+        .chat-container {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            height: 400px;
+            overflow-y: auto;
             padding: 15px;
-            border-radius: var(--border-radius);
-            margin-bottom: 20px;
-            display: none;
-        }
-        
-        .alert-success {
-            background-color: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-        
-        .alert-error {
-            background-color: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-        
-        .api-section {
-            background-color: #f8f9fa;
-            padding: 20px;
-            border-radius: var(--border-radius);
-            margin-bottom: 25px;
-        }
-        
-        .api-section h3 {
             margin-bottom: 15px;
-            color: var(--primary-color);
+            background-color: #f9f9f9;
+        }
+        
+        .message {
+            margin-bottom: 15px;
+            padding: 10px 15px;
+            border-radius: 18px;
+            max-width: 80%;
+        }
+        
+        .user-message {
+            background-color: var(--accent-color);
+            color: white;
+            margin-left: auto;
+            border-bottom-right-radius: 4px;
+        }
+        
+        .ai-message {
+            background-color: #e9e9e9;
+            margin-right: auto;
+            border-bottom-left-radius: 4px;
+        }
+        
+        .test-controls {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        
+        .mode-toggle {
             display: flex;
             align-items: center;
         }
         
-        .api-section h3 .icon {
-            margin-right: 10px;
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+            margin: 0 10px;
         }
         
-        .instructions {
-            background-color: #e8f4fd;
-            border-left: 4px solid var(--primary-color);
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        
+        input:checked + .slider {
+            background-color: var(--success-color);
+        }
+        
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .alert {
             padding: 15px;
-            margin: 20px 0;
+            margin-bottom: 20px;
+            border: 1px solid transparent;
             border-radius: 4px;
-            font-size: 14px;
         }
         
-        .instructions h4 {
-            margin-bottom: 8px;
-            color: var(--primary-color);
+        .alert-success {
+            color: #155724;
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+        }
+        
+        .alert-danger {
+            color: #721c24;
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+        }
+        
+        .flex-row {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .flex-row > div {
+            flex: 1;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            padding: 20px;
+            color: #6c757d;
+            font-size: 0.9rem;
         }
         
         @media (max-width: 768px) {
-            .container {
-                padding: 20px;
+            .flex-row {
+                flex-direction: column;
             }
         }
     </style>
@@ -166,165 +281,343 @@
 <body>
     <div class="container">
         <header>
-            <h1>Configuração de Agente de IA</h1>
-            <p>Configure as credenciais de API para integração com n8n</p>
+            <h1>Agente Criador</h1>
+            <p class="description">Crie e teste agentes de IA com base em briefings e prompts personalizados</p>
         </header>
         
-        <div class="alert alert-success" id="successAlert">
-            Configuração salva com sucesso! Os dados foram enviados para o n8n.
+        <div class="card">
+            <h2 class="card-title">Configuração do Agente</h2>
+            
+            <div id="alert-area"></div>
+            
+            <div class="form-group">
+                <label for="briefing" class="required">Briefing (arquivo DOCX)</label>
+                <input type="file" id="briefing" accept=".docx">
+                <small>Envie um documento DOCX contendo as instruções para o agente</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="token" class="required">Token</label>
+                <input type="text" id="token" placeholder="Insira o token de acesso">
+                <small>Token necessário para acessar as APIs do agente</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="prompt">Prompt Complementar (opcional)</label>
+                <textarea id="prompt" placeholder="Insira instruções adicionais para o agente"></textarea>
+                <small>Instruções extras que complementam o briefing principal</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="memory">Memória do Agente (opcional)</label>
+                <textarea id="memory" placeholder="Insira informações de contexto ou memória para o agente"></textarea>
+                <small>Informações de contexto que o agente deve lembrar durante as interações</small>
+            </div>
+            
+            <button id="generate-btn" class="btn">Gerar Prompt</button>
         </div>
         
-        <div class="alert alert-error" id="errorAlert">
-            Ocorreu um erro ao enviar a configuração. Verifique os campos e tente novamente.
+        <div class="card">
+            <h2 class="card-title">Teste do Agente</h2>
+            
+            <div class="test-controls">
+                <div class="mode-toggle">
+                    <span>Modo Automático</span>
+                    <label class="switch">
+                        <input type="checkbox" id="test-mode">
+                        <span class="slider"></span>
+                    </label>
+                    <span>Modo Manual</span>
+                </div>
+                
+                <button id="start-test-btn" class="btn btn-success">Iniciar Teste</button>
+            </div>
+            
+            <div id="chat-container" class="chat-container hidden">
+                <!-- As mensagens do chat serão inseridas aqui -->
+            </div>
+            
+            <div id="manual-test" class="hidden">
+                <div class="form-group">
+                    <label for="user-input">Sua mensagem:</label>
+                    <input type="text" id="user-input" placeholder="Digite sua mensagem para testar o agente">
+                </div>
+                <button id="send-message-btn" class="btn">Enviar Mensagem</button>
+            </div>
+            
+            <div id="auto-test" class="hidden">
+                <div class="form-group">
+                    <label for="test-scenarios">Cenários de Teste (opcional)</label>
+                    <textarea id="test-scenarios" placeholder="Descreva cenários para testar o agente automaticamente"></textarea>
+                    <small>Um cenário por linha. Deixe em branco para usar cenários padrão.</small>
+                </div>
+                <div class="form-group">
+                    <label for="test-iterations">Número de Iterações</label>
+                    <input type="text" id="test-iterations" value="5" placeholder="Número de testes a serem executados">
+                </div>
+            </div>
         </div>
         
-        <form id="agentConfigForm">
-            <div class="api-section">
-                <h3><span class="icon">🤖</span> Configurações do Agente</h3>
-                
-                <div class="form-group">
-                    <label for="agentName">Nome do Agente</label>
-                    <input type="text" id="agentName" name="agentName" placeholder="Ex: Vivi - Atendente Vitta">
-                </div>
-                
-                <div class="form-group">
-                    <label for="systemPrompt">Prompt do Sistema</label>
-                    <textarea id="systemPrompt" name="systemPrompt" placeholder="Instruções e personalidade do agente..."></textarea>
-                </div>
+        <div class="card">
+            <h2 class="card-title">Download do Agente</h2>
+            
+            <div class="form-group">
+                <label for="password" class="required">Senha para Download</label>
+                <input type="password" id="password" placeholder="Insira a senha para baixar o agente">
+                <small>A senha é necessária para acessar o template do agente</small>
             </div>
             
-            <div class="api-section">
-                <h3><span class="icon">🔑</span> Evo API (WhatsApp)</h3>
-                
-                <div class="instructions">
-                    <h4>Instruções:</h4>
-                    <p>Estas credenciais são usadas para integração com a API do WhatsApp através da Evo API.</p>
-                </div>
-                
-                <div class="form-group">
-                    <label for="evoApiKey">Chave da API Evo</label>
-                    <input type="password" id="evoApiKey" name="evoApiKey" placeholder="Sua chave API da Evo">
-                </div>
+            <div class="form-group">
+                <label for="agent-name">Nome do Agente (opcional)</label>
+                <input type="text" id="agent-name" placeholder="Digite um nome para o agente">
             </div>
             
-            <div class="api-section">
-                <h3><span class="icon">📝</span> OCR Space API</h3>
-                
-                <div class="instructions">
-                    <h4>Instruções:</h4>
-                    <p>Esta API é usada para processamento de imagens e reconhecimento de texto.</p>
-                </div>
-                
-                <div class="form-group">
-                    <label for="ocrApiKey">Chave da API OCR Space</label>
-                    <input type="password" id="ocrApiKey" name="ocrApiKey" placeholder="Sua chave API do OCR Space" value="K86865342088957">
-                </div>
-            </div>
-            
-            <div class="api-section">
-                <h3><span class="icon">🗄️</span> Configurações de Memória</h3>
-                
-                <div class="form-group">
-                    <label for="sessionKey">Chave de Sessão (opcional)</label>
-                    <input type="text" id="sessionKey" name="sessionKey" placeholder="Template para chave de sessão">
-                </div>
-                
-                <div class="form-group">
-                    <label for="contextWindow">Janela de Contexto</label>
-                    <input type="number" id="contextWindow" name="contextWindow" value="30" min="1" max="100">
-                </div>
-            </div>
-            
-            <button type="submit" class="btn">Salvar Configuração e Enviar para n8n</button>
-        </form>
+            <button id="download-btn" class="btn btn-success">Baixar Agente</button>
+        </div>
+        
+        <footer>
+            <p>Agente Criador &copy; 2023 - Todos os direitos reservados</p>
+        </footer>
     </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Envio do formulário
-            const form = document.getElementById('agentConfigForm');
-            const successAlert = document.getElementById('successAlert');
-            const errorAlert = document.getElementById('errorAlert');
+            // Elementos do DOM
+            const briefingInput = document.getElementById('briefing');
+            const tokenInput = document.getElementById('token');
+            const promptInput = document.getElementById('prompt');
+            const memoryInput = document.getElementById('memory');
+            const generateBtn = document.getElementById('generate-btn');
+            const testModeToggle = document.getElementById('test-mode');
+            const startTestBtn = document.getElementById('start-test-btn');
+            const chatContainer = document.getElementById('chat-container');
+            const manualTest = document.getElementById('manual-test');
+            const autoTest = document.getElementById('auto-test');
+            const userInput = document.getElementById('user-input');
+            const sendMessageBtn = document.getElementById('send-message-btn');
+            const testScenarios = document.getElementById('test-scenarios');
+            const testIterations = document.getElementById('test-iterations');
+            const passwordInput = document.getElementById('password');
+            const agentNameInput = document.getElementById('agent-name');
+            const downloadBtn = document.getElementById('download-btn');
+            const alertArea = document.getElementById('alert-area');
             
-            // Preencher com valores padrão do fluxo
-            document.getElementById('ocrApiKey').value = 'K86865342088957';
-            document.getElementById('contextWindow').value = '30';
+            // Variáveis de estado
+            let generatedPrompt = '';
+            let isManualMode = true;
+            let chatHistory = [];
             
-            form.addEventListener('submit', function(e) {
-                e.preventDefault();
-                
-                // Coletar dados do formulário
-                const formData = {
-                    agent: {
-                        name: document.getElementById('agentName').value,
-                        systemPrompt: document.getElementById('systemPrompt').value
-                    },
-                    credentials: {
-                        evoapi: {
-                            apiKey: document.getElementById('evoApiKey').value
-                        },
-                        ocrspace: {
-                            apiKey: document.getElementById('ocrApiKey').value
-                        }
-                    },
-                    settings: {
-                        sessionKey: document.getElementById('sessionKey').value,
-                        contextWindow: parseInt(document.getElementById('contextWindow').value)
-                    }
-                };
-                
-                // Aqui você faria a requisição para o n8n
-                // Esta é uma simulação do envio
-                simulateSendToN8N(formData);
+            // Event Listeners
+            generateBtn.addEventListener('click', generatePrompt);
+            testModeToggle.addEventListener('change', toggleTestMode);
+            startTestBtn.addEventListener('click', startTest);
+            sendMessageBtn.addEventListener('click', sendMessage);
+            userInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
             });
+            downloadBtn.addEventListener('click', downloadAgent);
             
-            function simulateSendToN8N(data) {
-                // Simulação de envio para o n8n
-                console.log('Dados enviados para o n8n:', data);
+            // Funções
+            function generatePrompt() {
+                // Validação básica
+                if (!briefingInput.files.length && !promptInput.value.trim()) {
+                    showAlert('Por favor, forneça um briefing ou um prompt complementar', 'error');
+                    return;
+                }
                 
-                // Em um caso real, você faria uma requisição fetch para o webhook do n8n
-                /*
-                fetch('URL_DO_SEU_WEBHOOK_N8N', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(data)
-                })
-                .then(response => response.json())
-                .then(result => {
-                    showAlert('success', 'Configuração enviada com sucesso!');
-                })
-                .catch(error => {
-                    showAlert('error', 'Erro ao enviar configuração: ' + error.message);
-                });
-                */
+                if (!tokenInput.value.trim()) {
+                    showAlert('O token é obrigatório', 'error');
+                    return;
+                }
                 
-                // Simulando sucesso após 1 segundo
+                // Simulação de geração de prompt (no backend real, isso seria uma chamada para um webhook)
+                showAlert('Gerando prompt a partir do briefing...', 'success');
+                
+                // Simulando um atraso de processamento
                 setTimeout(() => {
-                    showAlert('success', 'Configuração enviada com sucesso para o n8n!');
+                    generatedPrompt = "Prompt gerado com base no briefing fornecido. " + 
+                                     (promptInput.value.trim() ? "Complementado com: " + promptInput.value : "");
+                    showAlert('Prompt gerado com sucesso! Agora você pode testar o agente.', 'success');
+                    
+                    // Habilitar o teste
+                    startTestBtn.disabled = false;
+                }, 2000);
+            }
+            
+            function toggleTestMode() {
+                isManualMode = !testModeToggle.checked;
+                
+                if (isManualMode) {
+                    manualTest.classList.remove('hidden');
+                    autoTest.classList.add('hidden');
+                } else {
+                    manualTest.classList.add('hidden');
+                    autoTest.classList.remove('hidden');
+                }
+            }
+            
+            function startTest() {
+                if (!generatedPrompt) {
+                    showAlert('Gere um prompt primeiro antes de testar', 'error');
+                    return;
+                }
+                
+                // Mostrar a área de chat
+                chatContainer.classList.remove('hidden');
+                
+                if (isManualMode) {
+                    manualTest.classList.remove('hidden');
+                    autoTest.classList.add('hidden');
+                    
+                    // Adicionar mensagem inicial
+                    addMessage('Sistema', 'Modo manual ativado. Digite uma mensagem para testar o agente.', 'ai');
+                } else {
+                    manualTest.classList.add('hidden');
+                    autoTest.classList.remove('hidden');
+                    
+                    // Iniciar teste automático
+                    startAutoTest();
+                }
+            }
+            
+            function sendMessage() {
+                const message = userInput.value.trim();
+                if (!message) return;
+                
+                // Adicionar mensagem do usuário ao chat
+                addMessage('Você', message, 'user');
+                userInput.value = '';
+                
+                // Simular resposta da IA (no backend real, isso seria uma chamada para um webhook)
+                simulateAIResponse(message);
+            }
+            
+            function simulateAIResponse(userMessage) {
+                // Simular processamento
+                setTimeout(() => {
+                    const responses = [
+                        "Entendi sua solicitação. Posso ajudar com isso.",
+                        "Com base nas informações fornecidas, aqui está minha resposta...",
+                        "Analisando sua pergunta, acho que posso sugerir o seguinte...",
+                        "Ótima pergunta! Deixe-me elaborar uma resposta completa."
+                    ];
+                    
+                    const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+                    addMessage('Agente', randomResponse, 'ai');
                 }, 1000);
             }
             
-            function showAlert(type, message) {
-                // Esconder ambos os alertas primeiro
-                successAlert.style.display = 'none';
-                errorAlert.style.display = 'none';
+            function startAutoTest() {
+                addMessage('Sistema', 'Iniciando teste automático do agente...', 'ai');
                 
-                // Mostrar o alerta correto
-                if (type === 'success') {
-                    successAlert.textContent = message;
-                    successAlert.style.display = 'block';
+                // Obter cenários de teste
+                const scenarios = testScenarios.value.trim() ? 
+                    testScenarios.value.split('\n').filter(s => s.trim()) : 
+                    [
+                        "Apresente-se",
+                        "Qual é o seu propósito?",
+                        "Como você pode me ajudar?",
+                        "Quais são suas capacidades?",
+                        "Você pode me dar um exemplo do que pode fazer?"
+                    ];
+                
+                const iterations = parseInt(testIterations.value) || 5;
+                let currentIteration = 0;
+                
+                // Executar testes automaticamente
+                const testInterval = setInterval(() => {
+                    if (currentIteration >= iterations) {
+                        clearInterval(testInterval);
+                        addMessage('Sistema', 'Teste automático concluído!', 'ai');
+                        return;
+                    }
                     
-                    // Rolagem suave para o topo para ver o alerta
-                    window.scrollTo({
-                        top: 0,
-                        behavior: 'smooth'
-                    });
-                } else {
-                    errorAlert.textContent = message;
-                    errorAlert.style.display = 'block';
+                    const scenario = scenarios[currentIteration % scenarios.length];
+                    addMessage('Sistema', `Teste ${currentIteration + 1}: "${scenario}"`, 'ai');
+                    
+                    // Simular envio de mensagem e resposta
+                    addMessage('Testador', scenario, 'user');
+                    simulateAIResponse(scenario);
+                    
+                    currentIteration++;
+                }, 2500);
+            }
+            
+            function addMessage(sender, text, type) {
+                const messageElement = document.createElement('div');
+                messageElement.classList.add('message');
+                messageElement.classList.add(type === 'user' ? 'user-message' : 'ai-message');
+                
+                const senderElement = document.createElement('strong');
+                senderElement.textContent = sender + ': ';
+                
+                const textElement = document.createElement('span');
+                textElement.textContent = text;
+                
+                messageElement.appendChild(senderElement);
+                messageElement.appendChild(textElement);
+                
+                chatContainer.appendChild(messageElement);
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+                
+                // Adicionar ao histórico
+                chatHistory.push({ sender, text, type, timestamp: new Date() });
+            }
+            
+            function downloadAgent() {
+                if (!passwordInput.value.trim()) {
+                    showAlert('A senha é obrigatória para baixar o agente', 'error');
+                    return;
                 }
+                
+                if (!tokenInput.value.trim()) {
+                    showAlert('O token é obrigatório', 'error');
+                    return;
+                }
+                
+                // Simular download (no backend real, isso seria uma chamada para um webhook)
+                showAlert('Baixando agente...', 'success');
+                
+                // Simular processamento
+                setTimeout(() => {
+                    const agentName = agentNameInput.value.trim() || 'novo_agente';
+                    
+                    // Criar um link de download simulado
+                    const data = {
+                        prompt: generatedPrompt,
+                        token: tokenInput.value,
+                        memory: memoryInput.value,
+                        chatHistory: chatHistory,
+                        timestamp: new Date()
+                    };
+                    
+                    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data, null, 2));
+                    const downloadAnchorNode = document.createElement('a');
+                    downloadAnchorNode.setAttribute("href", dataStr);
+                    downloadAnchorNode.setAttribute("download", agentName + ".json");
+                    document.body.appendChild(downloadAnchorNode);
+                    downloadAnchorNode.click();
+                    downloadAnchorNode.remove();
+                    
+                    showAlert('Agente baixado com sucesso!', 'success');
+                }, 1500);
+            }
+            
+            function showAlert(message, type) {
+                const alert = document.createElement('div');
+                alert.classList.add('alert');
+                alert.classList.add(type === 'error' ? 'alert-danger' : 'alert-success');
+                alert.textContent = message;
+                
+                alertArea.innerHTML = '';
+                alertArea.appendChild(alert);
+                
+                // Remover alerta após 5 segundos
+                setTimeout(() => {
+                    alert.remove();
+                }, 5000);
             }
         });
     </script>
