@@ -272,12 +272,25 @@
             font-size: 0.9rem;
         }
         
+        .extracted-text {
+            margin-top: 15px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            border-left: 4px solid var(--accent-color);
+            max-height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        
         @media (max-width: 768px) {
             .flex-row {
                 flex-direction: column;
             }
         }
     </style>
+    <!-- Biblioteca Mammoth.js para extrair texto de DOCX -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.17/mammoth.browser.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -295,6 +308,10 @@
                 <label for="briefing">Briefing (arquivo DOCX - opcional)</label>
                 <input type="file" id="briefing" accept=".docx">
                 <small>Envie um documento DOCX contendo as instruções para o agente</small>
+                <div id="extracted-text-container" class="hidden">
+                    <h4>Texto extraído:</h4>
+                    <div id="extracted-text" class="extracted-text"></div>
+                </div>
             </div>
             
             <div class="form-group">
@@ -382,13 +399,17 @@
             const passwordInput = document.getElementById('password');
             const downloadBtn = document.getElementById('download-btn');
             const alertArea = document.getElementById('alert-area');
+            const extractedTextContainer = document.getElementById('extracted-text-container');
+            const extractedTextElement = document.getElementById('extracted-text');
             
             // Variáveis de estado
             let generatedPrompt = '';
             let isAutoMode = true;
             let chatHistory = [];
+            let extractedText = '';
             
             // Event Listeners
+            briefingInput.addEventListener('change', handleDocxUpload);
             generateBtn.addEventListener('click', generatePrompt);
             testModeToggle.addEventListener('change', toggleTestMode);
             startTestBtn.addEventListener('click', startTest);
@@ -400,10 +421,45 @@
             });
             downloadBtn.addEventListener('click', downloadAgent);
             
-            // Funções
+            // Função para extrair texto do DOCX
+            function handleDocxUpload(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+                
+                // Verificar se é um arquivo DOCX
+                if (!file.name.endsWith('.docx')) {
+                    showAlert('Por favor, selecione um arquivo DOCX', 'error');
+                    return;
+                }
+                
+                showAlert('Extraindo texto do documento...', 'success');
+                
+                // Usar Mammoth.js para extrair texto
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const arrayBuffer = e.target.result;
+                    
+                    mammoth.extractRawText({ arrayBuffer: arrayBuffer })
+                        .then(function(result) {
+                            extractedText = result.value;
+                            
+                            // Mostrar texto extraído
+                            extractedTextElement.textContent = extractedText;
+                            extractedTextContainer.classList.remove('hidden');
+                            
+                            showAlert('Texto extraído com sucesso!', 'success');
+                        })
+                        .catch(function(error) {
+                            console.error('Erro ao extrair texto:', error);
+                            showAlert('Erro ao extrair texto do documento', 'error');
+                        });
+                };
+                reader.readAsArrayBuffer(file);
+            }
+            
             function generatePrompt() {
                 // Validação básica
-                if (!briefingInput.files.length && !promptInput.value.trim()) {
+                if (!extractedText && !promptInput.value.trim()) {
                     showAlert('Por favor, forneça um briefing ou um prompt complementar', 'error');
                     return;
                 }
@@ -413,22 +469,21 @@
                     return;
                 }
                 
-                // Preparar dados para enviar ao webhook
-                const formData = new FormData();
-                if (briefingInput.files.length) {
-                    formData.append('briefing', briefingInput.files[0]);
-                }
-                formData.append('token', tokenInput.value);
-                if (promptInput.value.trim()) {
-                    formData.append('prompt', promptInput.value);
-                }
-                
                 showAlert('Gerando prompt a partir do briefing...', 'success');
+                
+                // Combinar texto extraído com prompt complementar
+                const fullPrompt = extractedText + (promptInput.value.trim() ? '\n\n' + promptInput.value : '');
                 
                 // Chamar o webhook para gerar o prompt
                 fetch('https://api.muvecom.com.br/v1/agente-criador/generate', {
                     method: 'POST',
-                    body: formData
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        text: fullPrompt,
+                        token: tokenInput.value
+                    })
                 })
                 .then(response => response.json())
                 .then(data => {
