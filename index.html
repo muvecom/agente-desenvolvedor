@@ -84,7 +84,8 @@
         input[type="text"],
         input[type="password"],
         input[type="file"],
-        textarea {
+        textarea,
+        select {
             width: 100%;
             padding: 12px;
             border: 1px solid #ddd;
@@ -144,6 +145,11 @@
             background-color: #c82333;
         }
         
+        .btn:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        
         .chat-container {
             border: 1px solid #ddd;
             border-radius: 8px;
@@ -174,6 +180,15 @@
             border-bottom-left-radius: 4px;
         }
         
+        .system-message {
+            background-color: #f8f9fa;
+            margin: 0 auto;
+            text-align: center;
+            font-style: italic;
+            border-radius: 8px;
+            max-width: 90%;
+        }
+        
         .test-controls {
             display: flex;
             justify-content: space-between;
@@ -202,6 +217,12 @@
             color: #721c24;
             background-color: #f8d7da;
             border-color: #f5c6cb;
+        }
+        
+        .alert-info {
+            color: #0c5460;
+            background-color: #d1ecf1;
+            border-color: #bee5eb;
         }
         
         .flex-row {
@@ -250,8 +271,34 @@
             cursor: pointer;
         }
         
+        .progress-container {
+            margin: 15px 0;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .progress-bar {
+            height: 20px;
+            background-color: var(--success-color);
+            text-align: center;
+            line-height: 20px;
+            color: white;
+            transition: width 0.3s;
+        }
+        
+        .test-config {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .test-config > div {
+            flex: 1;
+        }
+        
         @media (max-width: 768px) {
-            .flex-row {
+            .flex-row, .test-config {
                 flex-direction: column;
             }
         }
@@ -308,6 +355,32 @@
         <div class="card">
             <h2 class="card-title">Teste do Agente</h2>
             
+            <div id="test-config" class="test-config hidden">
+                <div class="form-group">
+                    <label for="test-scenario">Cenário de Teste</label>
+                    <select id="test-scenario">
+                        <option value="saudacao">Saudação e Apresentação</option>
+                        <option value="funcionalidade">Funcionalidades Básicas</option>
+                        <option value="especifico">Baseado no Briefing</option>
+                        <option value="personalizado">Perguntas Personalizadas</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="test-iterations">Número de Testes</label>
+                    <input type="number" id="test-iterations" value="5" min="1" max="20" placeholder="Número de testes">
+                </div>
+            </div>
+            
+            <div id="auto-test-controls" class="hidden">
+                <button id="start-auto-test-btn" class="btn">Iniciar Teste Automático</button>
+                <button id="stop-auto-test-btn" class="btn btn-danger" style="display: none;">Parar Teste</button>
+                
+                <div id="progress-container" class="progress-container hidden">
+                    <div id="progress-bar" class="progress-bar" style="width: 0%;">0%</div>
+                </div>
+            </div>
+            
             <div id="chat-container" class="chat-container hidden">
                 <!-- As mensagens do chat serão inseridas aqui -->
             </div>
@@ -320,14 +393,6 @@
                         <button id="send-message-btn" class="btn">Enviar</button>
                     </div>
                 </div>
-            </div>
-            
-            <div id="auto-test" class="hidden">
-                <div class="form-group">
-                    <label for="test-iterations">Número de Iterações</label>
-                    <input type="number" id="test-iterations" value="5" min="1" max="20" placeholder="Número de testes a serem executados">
-                </div>
-                <button id="start-auto-test-btn" class="btn">Iniciar Teste Automático</button>
             </div>
         </div>
         
@@ -358,13 +423,18 @@
             const passwordInput = document.getElementById('password');
             const testBtn = document.getElementById('test-btn');
             const downloadBtn = document.getElementById('download-btn');
+            const testConfig = document.getElementById('test-config');
+            const autoTestControls = document.getElementById('auto-test-controls');
+            const startAutoTestBtn = document.getElementById('start-auto-test-btn');
+            const stopAutoTestBtn = document.getElementById('stop-auto-test-btn');
+            const progressContainer = document.getElementById('progress-container');
+            const progressBar = document.getElementById('progress-bar');
             const chatContainer = document.getElementById('chat-container');
             const manualTest = document.getElementById('manual-test');
-            const autoTest = document.getElementById('auto-test');
             const userInput = document.getElementById('user-input');
             const sendMessageBtn = document.getElementById('send-message-btn');
             const testIterations = document.getElementById('test-iterations');
-            const startAutoTestBtn = document.getElementById('start-auto-test-btn');
+            const testScenario = document.getElementById('test-scenario');
             const alertArea = document.getElementById('alert-area');
             const extractedTextContainer = document.getElementById('extracted-text-container');
             const extractedTextElement = document.getElementById('extracted-text');
@@ -375,6 +445,9 @@
             let chatHistory = [];
             let extractedText = '';
             let isTesting = false;
+            let isAutoTesting = false;
+            let currentTestIndex = 0;
+            let totalTests = 0;
             
             // Event Listeners
             briefingInput.addEventListener('change', handleDocxUpload);
@@ -382,6 +455,7 @@
             downloadBtn.addEventListener('click', downloadAgent);
             sendMessageBtn.addEventListener('click', sendMessage);
             startAutoTestBtn.addEventListener('click', startAutoTest);
+            stopAutoTestBtn.addEventListener('click', stopAutoTest);
             userInput.addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') {
                     sendMessage();
@@ -399,7 +473,7 @@
                     return;
                 }
                 
-                showAlert('Extraindo texto do documento...', 'success');
+                showAlert('Extraindo texto do documento...', 'info');
                 
                 // Usar Mammoth.js para extrair texto
                 const reader = new FileReader();
@@ -436,16 +510,17 @@
                     return;
                 }
                 
-                // Mostrar a área de chat
+                // Mostrar a área de configuração de teste
+                testConfig.classList.remove('hidden');
+                autoTestControls.classList.remove('hidden');
                 chatContainer.classList.remove('hidden');
                 manualTest.classList.remove('hidden');
-                autoTest.classList.remove('hidden');
                 chatContainer.innerHTML = '';
                 
                 isTesting = true;
                 
                 // Adicionar mensagem inicial
-                addMessage('Sistema', 'Modo de teste ativado. Digite uma mensagem para testar o agente.', 'ai');
+                addMessage('Sistema', 'Modo de teste ativado. Configure e inicie o teste automático ou digite uma mensagem para testar manualmente.', 'system');
             }
             
             function sendMessage() {
@@ -471,8 +546,7 @@
                         text: fullPrompt,
                         userMessage: message,
                         token: tokenInput.value,
-                        testMode: 'manual',
-                        chatHistory: chatHistory
+                        testMode: 'manual'
                     })
                 })
                 .then(response => response.json())
@@ -480,26 +554,66 @@
                     if (data.success) {
                         addMessage('Agente', data.response, 'ai');
                     } else {
-                        addMessage('Sistema', 'Erro: ' + data.message, 'ai');
+                        addMessage('Sistema', 'Erro: ' + data.message, 'system');
                     }
                 })
                 .catch(error => {
                     console.error('Erro:', error);
-                    addMessage('Sistema', 'Erro ao conectar com o servidor', 'ai');
+                    addMessage('Sistema', 'Erro ao conectar com o servidor', 'system');
                 });
             }
             
             function startAutoTest() {
                 if (!isTesting) return;
                 
-                const iterations = parseInt(testIterations.value) || 5;
+                totalTests = parseInt(testIterations.value) || 5;
+                if (totalTests < 1) totalTests = 1;
+                if (totalTests > 20) totalTests = 20;
+                
+                currentTestIndex = 0;
+                isAutoTesting = true;
+                
+                // Atualizar UI
+                startAutoTestBtn.style.display = 'none';
+                stopAutoTestBtn.style.display = 'inline-block';
+                progressContainer.classList.remove('hidden');
+                updateProgressBar();
+                
+                // Gerar perguntas baseadas no cenário selecionado
+                const questions = generateTestQuestions(totalTests, testScenario.value);
+                
+                // Iniciar o processo de teste
+                addMessage('Sistema', `Iniciando teste automático com ${totalTests} perguntas...`, 'system');
+                processNextTestQuestion(questions, 0);
+            }
+            
+            function stopAutoTest() {
+                isAutoTesting = false;
+                startAutoTestBtn.style.display = 'inline-block';
+                stopAutoTestBtn.style.display = 'none';
+                addMessage('Sistema', 'Teste automático interrompido.', 'system');
+            }
+            
+            function processNextTestQuestion(questions, index) {
+                if (!isAutoTesting || index >= questions.length) {
+                    // Teste finalizado
+                    isAutoTesting = false;
+                    startAutoTestBtn.style.display = 'inline-block';
+                    stopAutoTestBtn.style.display = 'none';
+                    addMessage('Sistema', 'Teste automático concluído!', 'system');
+                    return;
+                }
+                
+                currentTestIndex = index;
+                updateProgressBar();
+                
+                const question = questions[index];
+                addMessage('Sistema', `Pergunta ${index + 1}/${questions.length}: ${question}`, 'system');
                 
                 // Combinar texto extraído com prompt complementar
                 const fullPrompt = extractedText + (promptInput.value.trim() ? '\n\n' + promptInput.value : '');
                 
-                addMessage('Sistema', 'Iniciando teste automático do agente...', 'ai');
-                
-                // Iniciar teste automático via webhook
+                // Enviar pergunta para o webhook
                 fetch('https://api.muvecom.com.br/v1/agente-criador/test', {
                     method: 'POST',
                     headers: {
@@ -507,33 +621,105 @@
                     },
                     body: JSON.stringify({
                         text: fullPrompt,
+                        userMessage: question,
                         token: tokenInput.value,
-                        testMode: 'auto',
-                        iterations: iterations
+                        testMode: 'auto'
                     })
                 })
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        // Exibir resultados do teste automático
-                        if (data.testResults && data.testResults.length) {
-                            data.testResults.forEach(result => {
-                                addMessage('Teste', `Pergunta: ${result.question}`, 'user');
-                                addMessage('Agente', `Resposta: ${result.response}`, 'ai');
-                                if (result.evaluation) {
-                                    addMessage('Sistema', `Avaliação: ${result.evaluation}`, 'ai');
-                                }
-                            });
-                        }
-                        addMessage('Sistema', 'Teste automático concluído!', 'ai');
+                        addMessage('Agente', data.response, 'ai');
+                        
+                        // Aguardar um pouco antes da próxima pergunta
+                        setTimeout(() => {
+                            processNextTestQuestion(questions, index + 1);
+                        }, 1000);
                     } else {
-                        addMessage('Sistema', 'Erro no teste: ' + data.message, 'ai');
+                        addMessage('Sistema', 'Erro: ' + data.message, 'system');
+                        setTimeout(() => {
+                            processNextTestQuestion(questions, index + 1);
+                        }, 1000);
                     }
                 })
                 .catch(error => {
                     console.error('Erro:', error);
-                    addMessage('Sistema', 'Erro ao conectar com o servidor', 'ai');
+                    addMessage('Sistema', 'Erro ao conectar com o servidor', 'system');
+                    setTimeout(() => {
+                        processNextTestQuestion(questions, index + 1);
+                    }, 1000);
                 });
+            }
+            
+            function generateTestQuestions(count, scenario) {
+                const questions = [];
+                
+                // Perguntas gerais para todos os cenários
+                const generalQuestions = [
+                    "Você pode se apresentar?",
+                    "Qual é o seu propósito principal?",
+                    "Como você pode me ajudar?",
+                    "Quais são suas principais funcionalidades?",
+                    "Você pode me dar um exemplo de como usar suas capacidades?"
+                ];
+                
+                // Perguntas específicas baseadas no briefing
+                const specificQuestions = generateQuestionsFromBriefing(extractedText, count);
+                
+                // Selecionar perguntas baseadas no cenário
+                switch(scenario) {
+                    case 'saudacao':
+                        questions.push(...generalQuestions.slice(0, count));
+                        break;
+                    case 'funcionalidade':
+                        questions.push(...generalQuestions.slice(1, count+1));
+                        break;
+                    case 'especifico':
+                        questions.push(...specificQuestions.slice(0, count));
+                        break;
+                    case 'personalizado':
+                        // Para perguntas personalizadas, usamos uma mistura
+                        const half = Math.ceil(count / 2);
+                        questions.push(...generalQuestions.slice(0, half));
+                        questions.push(...specificQuestions.slice(0, count - half));
+                        break;
+                    default:
+                        questions.push(...generalQuestions.slice(0, count));
+                }
+                
+                // Garantir que temos pelo menos 'count' perguntas
+                while (questions.length < count) {
+                    questions.push("Como isso funciona?");
+                }
+                
+                return questions.slice(0, count);
+            }
+            
+            function generateQuestionsFromBriefing(briefingText, count) {
+                if (!briefingText) return [];
+                
+                const questions = [];
+                const sentences = briefingText.split(/[.!?]+/).filter(s => s.trim().length > 10);
+                
+                for (let i = 0; i < Math.min(sentences.length, count); i++) {
+                    const sentence = sentences[i].trim();
+                    if (sentence.length > 0) {
+                        questions.push(`Explique mais sobre: ${sentence}`);
+                    }
+                }
+                
+                // Se não temos perguntas suficientes, adicionar algumas genéricas
+                while (questions.length < count) {
+                    questions.push("Como isso se relaciona com o contexto fornecido?");
+                }
+                
+                return questions;
+            }
+            
+            function updateProgressBar() {
+                const progress = totalTests > 0 ? (currentTestIndex / totalTests) * 100 : 0;
+                progressBar.style.width = `${progress}%`;
+                progressBar.textContent = `${Math.round(progress)}%`;
             }
             
             function downloadAgent() {
@@ -553,7 +739,7 @@
                     return;
                 }
                 
-                showAlert('Baixando agente...', 'success');
+                showAlert('Baixando agente...', 'info');
                 
                 // Combinar texto extraído com prompt complementar
                 const fullPrompt = extractedText + (promptInput.value.trim() ? '\n\n' + promptInput.value : '');
@@ -598,7 +784,14 @@
             function addMessage(sender, text, type) {
                 const messageElement = document.createElement('div');
                 messageElement.classList.add('message');
-                messageElement.classList.add(type === 'user' ? 'user-message' : 'ai-message');
+                
+                if (type === 'user') {
+                    messageElement.classList.add('user-message');
+                } else if (type === 'ai') {
+                    messageElement.classList.add('ai-message');
+                } else {
+                    messageElement.classList.add('system-message');
+                }
                 
                 const senderElement = document.createElement('strong');
                 senderElement.textContent = sender + ': ';
@@ -611,15 +804,20 @@
                 
                 chatContainer.appendChild(messageElement);
                 chatContainer.scrollTop = chatContainer.scrollHeight;
-                
-                // Adicionar ao histórico
-                chatHistory.push({ sender, text, type, timestamp: new Date() });
             }
             
             function showAlert(message, type) {
                 const alert = document.createElement('div');
                 alert.classList.add('alert');
-                alert.classList.add(type === 'error' ? 'alert-danger' : 'alert-success');
+                
+                if (type === 'error') {
+                    alert.classList.add('alert-danger');
+                } else if (type === 'success') {
+                    alert.classList.add('alert-success');
+                } else {
+                    alert.classList.add('alert-info');
+                }
+                
                 alert.textContent = message;
                 
                 alertArea.innerHTML = '';
