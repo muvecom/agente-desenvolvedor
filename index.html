@@ -181,57 +181,6 @@
             align-items: center;
         }
         
-        .mode-toggle {
-            display: flex;
-            align-items: center;
-        }
-        
-        .switch {
-            position: relative;
-            display: inline-block;
-            width: 60px;
-            height: 34px;
-            margin: 0 10px;
-        }
-        
-        .switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-        
-        .slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: #ccc;
-            transition: .4s;
-            border-radius: 34px;
-        }
-        
-        .slider:before {
-            position: absolute;
-            content: "";
-            height: 26px;
-            width: 26px;
-            left: 4px;
-            bottom: 4px;
-            background-color: white;
-            transition: .4s;
-            border-radius: 50%;
-        }
-        
-        input:checked + .slider {
-            background-color: var(--success-color);
-        }
-        
-        input:checked + .slider:before {
-            transform: translateX(26px);
-        }
-        
         .hidden {
             display: none;
         }
@@ -283,6 +232,24 @@
             white-space: pre-wrap;
         }
         
+        .webhook-url {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e9ecef;
+            border-radius: 8px;
+            border-left: 4px solid var(--success-color);
+        }
+        
+        .copy-btn {
+            margin-left: 10px;
+            padding: 5px 10px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
         @media (max-width: 768px) {
             .flex-row {
                 flex-direction: column;
@@ -326,23 +293,20 @@
                 <small>Instruções extras que complementam o briefing principal</small>
             </div>
             
-            <button id="generate-btn" class="btn">Gerar Prompt</button>
+            <div class="form-group">
+                <label for="password" class="required">Senha para Download</label>
+                <input type="password" id="password" placeholder="Insira a senha para baixar o agente">
+                <small>A senha é necessária para acessar o template do agente</small>
+            </div>
+            
+            <div class="test-controls">
+                <button id="test-btn" class="btn btn-warning">Testar Agente</button>
+                <button id="download-btn" class="btn btn-success">Baixar Agente</button>
+            </div>
         </div>
         
         <div class="card">
             <h2 class="card-title">Teste do Agente</h2>
-            
-            <div class="test-controls">
-                <div class="mode-toggle">
-                    <span>Testar Automaticamente?</span>
-                    <label class="switch">
-                        <input type="checkbox" id="test-mode" checked>
-                        <span class="slider"></span>
-                    </label>
-                </div>
-                
-                <button id="start-test-btn" class="btn btn-success">Iniciar Teste</button>
-            </div>
             
             <div id="chat-container" class="chat-container hidden">
                 <!-- As mensagens do chat serão inseridas aqui -->
@@ -351,9 +315,11 @@
             <div id="manual-test" class="hidden">
                 <div class="form-group">
                     <label for="user-input">Sua mensagem:</label>
-                    <input type="text" id="user-input" placeholder="Digite sua mensagem para testar o agente">
+                    <div class="flex-row">
+                        <input type="text" id="user-input" placeholder="Digite sua mensagem para testar o agente">
+                        <button id="send-message-btn" class="btn">Enviar</button>
+                    </div>
                 </div>
-                <button id="send-message-btn" class="btn">Enviar Mensagem</button>
             </div>
             
             <div id="auto-test" class="hidden">
@@ -361,19 +327,21 @@
                     <label for="test-iterations">Número de Iterações</label>
                     <input type="number" id="test-iterations" value="5" min="1" max="20" placeholder="Número de testes a serem executados">
                 </div>
+                <button id="start-auto-test-btn" class="btn">Iniciar Teste Automático</button>
             </div>
         </div>
         
-        <div class="card">
-            <h2 class="card-title">Download do Agente</h2>
+        <div id="download-success" class="card hidden">
+            <h2 class="card-title">Agente Criado com Sucesso!</h2>
             
-            <div class="form-group">
-                <label for="password" class="required">Senha para Download</label>
-                <input type="password" id="password" placeholder="Insira a senha para baixar o agente">
-                <small>A senha é necessária para acessar o template do agente</small>
+            <div class="webhook-url">
+                <p><strong>URL do Webhook para integração:</strong></p>
+                <div class="flex-row">
+                    <input type="text" id="webhook-url" readonly>
+                    <button class="copy-btn" onclick="copyWebhookUrl()">Copiar</button>
+                </div>
+                <small>Use esta URL para integrar o agente em seus sistemas</small>
             </div>
-            
-            <button id="download-btn" class="btn btn-success">Baixar Agente</button>
         </div>
         
         <footer>
@@ -387,39 +355,38 @@
             const briefingInput = document.getElementById('briefing');
             const tokenInput = document.getElementById('token');
             const promptInput = document.getElementById('prompt');
-            const generateBtn = document.getElementById('generate-btn');
-            const testModeToggle = document.getElementById('test-mode');
-            const startTestBtn = document.getElementById('start-test-btn');
+            const passwordInput = document.getElementById('password');
+            const testBtn = document.getElementById('test-btn');
+            const downloadBtn = document.getElementById('download-btn');
             const chatContainer = document.getElementById('chat-container');
             const manualTest = document.getElementById('manual-test');
             const autoTest = document.getElementById('auto-test');
             const userInput = document.getElementById('user-input');
             const sendMessageBtn = document.getElementById('send-message-btn');
             const testIterations = document.getElementById('test-iterations');
-            const passwordInput = document.getElementById('password');
-            const downloadBtn = document.getElementById('download-btn');
+            const startAutoTestBtn = document.getElementById('start-auto-test-btn');
             const alertArea = document.getElementById('alert-area');
             const extractedTextContainer = document.getElementById('extracted-text-container');
             const extractedTextElement = document.getElementById('extracted-text');
+            const downloadSuccess = document.getElementById('download-success');
+            const webhookUrlInput = document.getElementById('webhook-url');
             
             // Variáveis de estado
-            let generatedPrompt = '';
-            let isAutoMode = true;
             let chatHistory = [];
             let extractedText = '';
+            let isTesting = false;
             
             // Event Listeners
             briefingInput.addEventListener('change', handleDocxUpload);
-            generateBtn.addEventListener('click', generatePrompt);
-            testModeToggle.addEventListener('change', toggleTestMode);
-            startTestBtn.addEventListener('click', startTest);
+            testBtn.addEventListener('click', startTest);
+            downloadBtn.addEventListener('click', downloadAgent);
             sendMessageBtn.addEventListener('click', sendMessage);
+            startAutoTestBtn.addEventListener('click', startAutoTest);
             userInput.addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') {
                     sendMessage();
                 }
             });
-            downloadBtn.addEventListener('click', downloadAgent);
             
             // Função para extrair texto do DOCX
             function handleDocxUpload(event) {
@@ -457,7 +424,7 @@
                 reader.readAsArrayBuffer(file);
             }
             
-            function generatePrompt() {
+            function startTest() {
                 // Validação básica
                 if (!extractedText && !promptInput.value.trim()) {
                     showAlert('Por favor, forneça um briefing ou um prompt complementar', 'error');
@@ -469,74 +436,30 @@
                     return;
                 }
                 
-                showAlert('Gerando prompt a partir do briefing...', 'success');
-                
-                // Combinar texto extraído com prompt complementar
-                const fullPrompt = extractedText + (promptInput.value.trim() ? '\n\n' + promptInput.value : '');
-                
-                // Chamar o webhook para gerar o prompt
-                fetch('https://api.muvecom.com.br/v1/agente-criador/generate', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        text: fullPrompt,
-                        token: tokenInput.value
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        generatedPrompt = data.generatedPrompt;
-                        showAlert('Prompt gerado com sucesso! Agora você pode testar o agente.', 'success');
-                        startTestBtn.disabled = false;
-                    } else {
-                        showAlert('Erro ao gerar prompt: ' + data.message, 'error');
-                    }
-                })
-                .catch(error => {
-                    console.error('Erro:', error);
-                    showAlert('Erro ao conectar com o servidor', 'error');
-                });
-            }
-            
-            function toggleTestMode() {
-                isAutoMode = testModeToggle.checked;
-            }
-            
-            function startTest() {
-                if (!generatedPrompt) {
-                    showAlert('Gere um prompt primeiro antes de testar', 'error');
-                    return;
-                }
-                
                 // Mostrar a área de chat
                 chatContainer.classList.remove('hidden');
+                manualTest.classList.remove('hidden');
+                autoTest.classList.remove('hidden');
                 chatContainer.innerHTML = '';
                 
-                if (isAutoMode) {
-                    manualTest.classList.add('hidden');
-                    autoTest.classList.remove('hidden');
-                    
-                    // Iniciar teste automático
-                    startAutoTest();
-                } else {
-                    manualTest.classList.remove('hidden');
-                    autoTest.classList.add('hidden');
-                    
-                    // Adicionar mensagem inicial
-                    addMessage('Sistema', 'Modo manual ativado. Digite uma mensagem para testar o agente.', 'ai');
-                }
+                isTesting = true;
+                
+                // Adicionar mensagem inicial
+                addMessage('Sistema', 'Modo de teste ativado. Digite uma mensagem para testar o agente.', 'ai');
             }
             
             function sendMessage() {
+                if (!isTesting) return;
+                
                 const message = userInput.value.trim();
                 if (!message) return;
                 
                 // Adicionar mensagem do usuário ao chat
                 addMessage('Você', message, 'user');
                 userInput.value = '';
+                
+                // Combinar texto extraído com prompt complementar
+                const fullPrompt = extractedText + (promptInput.value.trim() ? '\n\n' + promptInput.value : '');
                 
                 // Enviar mensagem para o webhook
                 fetch('https://api.muvecom.com.br/v1/agente-criador/test', {
@@ -545,7 +468,7 @@
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        prompt: generatedPrompt,
+                        text: fullPrompt,
                         userMessage: message,
                         token: tokenInput.value,
                         testMode: 'manual',
@@ -567,9 +490,14 @@
             }
             
             function startAutoTest() {
-                addMessage('Sistema', 'Iniciando teste automático do agente...', 'ai');
+                if (!isTesting) return;
                 
                 const iterations = parseInt(testIterations.value) || 5;
+                
+                // Combinar texto extraído com prompt complementar
+                const fullPrompt = extractedText + (promptInput.value.trim() ? '\n\n' + promptInput.value : '');
+                
+                addMessage('Sistema', 'Iniciando teste automático do agente...', 'ai');
                 
                 // Iniciar teste automático via webhook
                 fetch('https://api.muvecom.com.br/v1/agente-criador/test', {
@@ -578,7 +506,7 @@
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        prompt: generatedPrompt,
+                        text: fullPrompt,
                         token: tokenInput.value,
                         testMode: 'auto',
                         iterations: iterations
@@ -608,6 +536,65 @@
                 });
             }
             
+            function downloadAgent() {
+                if (!passwordInput.value.trim()) {
+                    showAlert('A senha é obrigatória para baixar o agente', 'error');
+                    return;
+                }
+                
+                if (!tokenInput.value.trim()) {
+                    showAlert('O token é obrigatório', 'error');
+                    return;
+                }
+                
+                // Validação básica
+                if (!extractedText && !promptInput.value.trim()) {
+                    showAlert('Por favor, forneça um briefing ou um prompt complementar', 'error');
+                    return;
+                }
+                
+                showAlert('Baixando agente...', 'success');
+                
+                // Combinar texto extraído com prompt complementar
+                const fullPrompt = extractedText + (promptInput.value.trim() ? '\n\n' + promptInput.value : '');
+                
+                // Solicitar download do agente via webhook
+                fetch('https://api.muvecom.com.br/v1/agente-criador/download', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        password: passwordInput.value,
+                        token: tokenInput.value,
+                        text: fullPrompt
+                    })
+                })
+                .then(response => response.blob())
+                .then(blob => {
+                    // Criar um link para download do arquivo
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = 'agente.json';
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    
+                    // Mostrar URL do webhook
+                    const webhookUrl = `https://api.muvecom.com.br/v1/${tokenInput.value}`;
+                    webhookUrlInput.value = webhookUrl;
+                    downloadSuccess.classList.remove('hidden');
+                    
+                    showAlert('Agente baixado com sucesso!', 'success');
+                })
+                .catch(error => {
+                    console.error('Erro:', error);
+                    showAlert('Erro ao baixar o agente', 'error');
+                });
+            }
+            
             function addMessage(sender, text, type) {
                 const messageElement = document.createElement('div');
                 messageElement.classList.add('message');
@@ -629,51 +616,6 @@
                 chatHistory.push({ sender, text, type, timestamp: new Date() });
             }
             
-            function downloadAgent() {
-                if (!passwordInput.value.trim()) {
-                    showAlert('A senha é obrigatória para baixar o agente', 'error');
-                    return;
-                }
-                
-                if (!tokenInput.value.trim()) {
-                    showAlert('O token é obrigatório', 'error');
-                    return;
-                }
-                
-                showAlert('Baixando agente...', 'success');
-                
-                // Solicitar download do agente via webhook
-                fetch('https://api.muvecom.com.br/v1/agente-criador/download', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        password: passwordInput.value,
-                        token: tokenInput.value,
-                        prompt: generatedPrompt,
-                        complementaryPrompt: promptInput.value
-                    })
-                })
-                .then(response => response.blob())
-                .then(blob => {
-                    // Criar um link para download do arquivo
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.style.display = 'none';
-                    a.href = url;
-                    a.download = 'agente.json';
-                    document.body.appendChild(a);
-                    a.click();
-                    window.URL.revokeObjectURL(url);
-                    showAlert('Agente baixado com sucesso!', 'success');
-                })
-                .catch(error => {
-                    console.error('Erro:', error);
-                    showAlert('Erro ao baixar o agente', 'error');
-                });
-            }
-            
             function showAlert(message, type) {
                 const alert = document.createElement('div');
                 alert.classList.add('alert');
@@ -688,6 +630,12 @@
                     alert.remove();
                 }, 5000);
             }
+            
+            window.copyWebhookUrl = function() {
+                webhookUrlInput.select();
+                document.execCommand('copy');
+                showAlert('URL copiada para a área de transferência!', 'success');
+            };
         });
     </script>
 </body>
