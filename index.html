@@ -84,8 +84,7 @@
         input[type="text"],
         input[type="password"],
         input[type="file"],
-        textarea,
-        select {
+        textarea {
             width: 100%;
             padding: 12px;
             border: 1px solid #ddd;
@@ -191,9 +190,8 @@
         
         .test-controls {
             display: flex;
-            justify-content: space-between;
+            gap: 15px;
             margin-bottom: 20px;
-            align-items: center;
         }
         
         .hidden {
@@ -287,18 +285,8 @@
             transition: width 0.3s;
         }
         
-        .test-config {
-            display: flex;
-            gap: 15px;
-            margin-bottom: 15px;
-        }
-        
-        .test-config > div {
-            flex: 1;
-        }
-        
         @media (max-width: 768px) {
-            .flex-row, .test-config {
+            .flex-row, .test-controls {
                 flex-direction: column;
             }
         }
@@ -340,40 +328,18 @@
                 <small>Instruções extras que complementam o briefing principal</small>
             </div>
             
-            <div class="form-group">
-                <label for="password" class="required">Senha para Download</label>
-                <input type="password" id="password" placeholder="Insira a senha para baixar o agente">
-                <small>A senha é necessária para acessar o template do agente</small>
-            </div>
-            
             <div class="test-controls">
-                <button id="test-btn" class="btn btn-warning">Testar Agente</button>
-                <button id="download-btn" class="btn btn-success">Baixar Agente</button>
+                <button id="generate-btn" class="btn">Gerar Prompt</button>
+                <button id="test-btn" class="btn btn-warning" disabled>Testar Agente</button>
+                <button id="download-btn" class="btn btn-success" disabled>Baixar Agente</button>
             </div>
         </div>
         
         <div class="card">
             <h2 class="card-title">Teste do Agente</h2>
             
-            <div id="test-config" class="test-config hidden">
-                <div class="form-group">
-                    <label for="test-scenario">Cenário de Teste</label>
-                    <select id="test-scenario">
-                        <option value="saudacao">Saudação e Apresentação</option>
-                        <option value="funcionalidade">Funcionalidades Básicas</option>
-                        <option value="especifico">Baseado no Briefing</option>
-                        <option value="personalizado">Perguntas Personalizadas</option>
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <label for="test-iterations">Número de Testes</label>
-                    <input type="number" id="test-iterations" value="5" min="1" max="20" placeholder="Número de testes">
-                </div>
-            </div>
-            
             <div id="auto-test-controls" class="hidden">
-                <button id="start-auto-test-btn" class="btn">Iniciar Teste Automático</button>
+                <button id="start-auto-test-btn" class="btn">Iniciar Teste Automático (10 perguntas)</button>
                 <button id="stop-auto-test-btn" class="btn btn-danger" style="display: none;">Parar Teste</button>
                 
                 <div id="progress-container" class="progress-container hidden">
@@ -383,16 +349,6 @@
             
             <div id="chat-container" class="chat-container hidden">
                 <!-- As mensagens do chat serão inseridas aqui -->
-            </div>
-            
-            <div id="manual-test" class="hidden">
-                <div class="form-group">
-                    <label for="user-input">Sua mensagem:</label>
-                    <div class="flex-row">
-                        <input type="text" id="user-input" placeholder="Digite sua mensagem para testar o agente">
-                        <button id="send-message-btn" class="btn">Enviar</button>
-                    </div>
-                </div>
             </div>
         </div>
         
@@ -420,21 +376,15 @@
             const briefingInput = document.getElementById('briefing');
             const tokenInput = document.getElementById('token');
             const promptInput = document.getElementById('prompt');
-            const passwordInput = document.getElementById('password');
+            const generateBtn = document.getElementById('generate-btn');
             const testBtn = document.getElementById('test-btn');
             const downloadBtn = document.getElementById('download-btn');
-            const testConfig = document.getElementById('test-config');
             const autoTestControls = document.getElementById('auto-test-controls');
             const startAutoTestBtn = document.getElementById('start-auto-test-btn');
             const stopAutoTestBtn = document.getElementById('stop-auto-test-btn');
             const progressContainer = document.getElementById('progress-container');
             const progressBar = document.getElementById('progress-bar');
             const chatContainer = document.getElementById('chat-container');
-            const manualTest = document.getElementById('manual-test');
-            const userInput = document.getElementById('user-input');
-            const sendMessageBtn = document.getElementById('send-message-btn');
-            const testIterations = document.getElementById('test-iterations');
-            const testScenario = document.getElementById('test-scenario');
             const alertArea = document.getElementById('alert-area');
             const extractedTextContainer = document.getElementById('extracted-text-container');
             const extractedTextElement = document.getElementById('extracted-text');
@@ -444,23 +394,18 @@
             // Variáveis de estado
             let chatHistory = [];
             let extractedText = '';
-            let isTesting = false;
+            let generatedPrompt = '';
             let isAutoTesting = false;
             let currentTestIndex = 0;
-            let totalTests = 0;
+            const totalTests = 10; // Número fixo de testes
             
             // Event Listeners
             briefingInput.addEventListener('change', handleDocxUpload);
+            generateBtn.addEventListener('click', generatePrompt);
             testBtn.addEventListener('click', startTest);
             downloadBtn.addEventListener('click', downloadAgent);
-            sendMessageBtn.addEventListener('click', sendMessage);
             startAutoTestBtn.addEventListener('click', startAutoTest);
             stopAutoTestBtn.addEventListener('click', stopAutoTest);
-            userInput.addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    sendMessage();
-                }
-            });
             
             // Função para extrair texto do DOCX
             function handleDocxUpload(event) {
@@ -498,7 +443,7 @@
                 reader.readAsArrayBuffer(file);
             }
             
-            function startTest() {
+            function generatePrompt() {
                 // Validação básica
                 if (!extractedText && !promptInput.value.trim()) {
                     showAlert('Por favor, forneça um briefing ou um prompt complementar', 'error');
@@ -510,65 +455,58 @@
                     return;
                 }
                 
-                // Mostrar a área de configuração de teste
-                testConfig.classList.remove('hidden');
-                autoTestControls.classList.remove('hidden');
-                chatContainer.classList.remove('hidden');
-                manualTest.classList.remove('hidden');
-                chatContainer.innerHTML = '';
-                
-                isTesting = true;
-                
-                // Adicionar mensagem inicial
-                addMessage('Sistema', 'Modo de teste ativado. Configure e inicie o teste automático ou digite uma mensagem para testar manualmente.', 'system');
-            }
-            
-            function sendMessage() {
-                if (!isTesting) return;
-                
-                const message = userInput.value.trim();
-                if (!message) return;
-                
-                // Adicionar mensagem do usuário ao chat
-                addMessage('Você', message, 'user');
-                userInput.value = '';
+                showAlert('Gerando prompt a partir do briefing...', 'info');
                 
                 // Combinar texto extraído com prompt complementar
                 const fullPrompt = extractedText + (promptInput.value.trim() ? '\n\n' + promptInput.value : '');
                 
-                // Enviar mensagem para o webhook
-                fetch('https://api.muvecom.com.br/v1/agente-criador/test', {
+                // Chamar o webhook para gerar o prompt
+                fetch('https://api.muvecom.com.br/v1/agente-criador/generate', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
                         text: fullPrompt,
-                        userMessage: message,
-                        token: tokenInput.value,
-                        testMode: 'manual'
+                        token: tokenInput.value
                     })
                 })
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        addMessage('Agente', data.response, 'ai');
+                        generatedPrompt = data.generatedPrompt;
+                        showAlert('Prompt gerado com sucesso! Agora você pode testar o agente.', 'success');
+                        
+                        // Habilitar botões de teste e download
+                        testBtn.disabled = false;
+                        downloadBtn.disabled = false;
                     } else {
-                        addMessage('Sistema', 'Erro: ' + data.message, 'system');
+                        showAlert('Erro ao gerar prompt: ' + data.message, 'error');
                     }
                 })
                 .catch(error => {
                     console.error('Erro:', error);
-                    addMessage('Sistema', 'Erro ao conectar com o servidor', 'system');
+                    showAlert('Erro ao conectar com o servidor', 'error');
                 });
             }
             
-            function startAutoTest() {
-                if (!isTesting) return;
+            function startTest() {
+                if (!generatedPrompt) {
+                    showAlert('Gere um prompt primeiro antes de testar', 'error');
+                    return;
+                }
                 
-                totalTests = parseInt(testIterations.value) || 5;
-                if (totalTests < 1) totalTests = 1;
-                if (totalTests > 20) totalTests = 20;
+                // Mostrar a área de teste
+                autoTestControls.classList.remove('hidden');
+                chatContainer.classList.remove('hidden');
+                chatContainer.innerHTML = '';
+                
+                // Adicionar mensagem inicial
+                addMessage('Sistema', 'Pronto para iniciar o teste automático. Clique em "Iniciar Teste Automático" para começar.', 'system');
+            }
+            
+            function startAutoTest() {
+                if (!generatedPrompt) return;
                 
                 currentTestIndex = 0;
                 isAutoTesting = true;
@@ -578,9 +516,10 @@
                 stopAutoTestBtn.style.display = 'inline-block';
                 progressContainer.classList.remove('hidden');
                 updateProgressBar();
+                chatContainer.innerHTML = '';
                 
-                // Gerar perguntas baseadas no cenário selecionado
-                const questions = generateTestQuestions(totalTests, testScenario.value);
+                // Gerar perguntas baseadas no briefing/prompt
+                const questions = generateTestQuestions();
                 
                 // Iniciar o processo de teste
                 addMessage('Sistema', `Iniciando teste automático com ${totalTests} perguntas...`, 'system');
@@ -610,20 +549,16 @@
                 const question = questions[index];
                 addMessage('Sistema', `Pergunta ${index + 1}/${questions.length}: ${question}`, 'system');
                 
-                // Combinar texto extraído com prompt complementar
-                const fullPrompt = extractedText + (promptInput.value.trim() ? '\n\n' + promptInput.value : '');
-                
-                // Enviar pergunta para o webhook
+                // Enviar pergunta para o webhook de teste
                 fetch('https://api.muvecom.com.br/v1/agente-criador/test', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        text: fullPrompt,
+                        prompt: generatedPrompt,
                         userMessage: question,
-                        token: tokenInput.value,
-                        testMode: 'auto'
+                        token: tokenInput.value
                     })
                 })
                 .then(response => response.json())
@@ -651,7 +586,7 @@
                 });
             }
             
-            function generateTestQuestions(count, scenario) {
+            function generateTestQuestions() {
                 const questions = [];
                 
                 // Perguntas gerais para todos os cenários
@@ -660,48 +595,37 @@
                     "Qual é o seu propósito principal?",
                     "Como você pode me ajudar?",
                     "Quais são suas principais funcionalidades?",
-                    "Você pode me dar um exemplo de como usar suas capacidades?"
+                    "Você pode me dar um exemplo de como usar suas capacidades?",
+                    "Como devo começar a interagir com você?",
+                    "Quais tipos de solicitações você pode atender?",
+                    "Existe alguma limitação no que você pode fazer?",
+                    "Como você se diferencia de outros assistentes?",
+                    "Que tipo de problemas você resolve melhor?"
                 ];
                 
-                // Perguntas específicas baseadas no briefing
-                const specificQuestions = generateQuestionsFromBriefing(extractedText, count);
-                
-                // Selecionar perguntas baseadas no cenário
-                switch(scenario) {
-                    case 'saudacao':
-                        questions.push(...generalQuestions.slice(0, count));
-                        break;
-                    case 'funcionalidade':
-                        questions.push(...generalQuestions.slice(1, count+1));
-                        break;
-                    case 'especifico':
-                        questions.push(...specificQuestions.slice(0, count));
-                        break;
-                    case 'personalizado':
-                        // Para perguntas personalizadas, usamos uma mistura
-                        const half = Math.ceil(count / 2);
-                        questions.push(...generalQuestions.slice(0, half));
-                        questions.push(...specificQuestions.slice(0, count - half));
-                        break;
-                    default:
-                        questions.push(...generalQuestions.slice(0, count));
+                // Se temos um briefing, adicionar perguntas específicas
+                if (extractedText) {
+                    // Usar as primeiras 5 perguntas gerais e 5 específicas
+                    questions.push(...generalQuestions.slice(0, 5));
+                    
+                    // Gerar 5 perguntas específicas baseadas no briefing
+                    const specificQuestions = generateQuestionsFromBriefing();
+                    questions.push(...specificQuestions.slice(0, 5));
+                } else {
+                    // Usar apenas perguntas gerais
+                    questions.push(...generalQuestions.slice(0, totalTests));
                 }
                 
-                // Garantir que temos pelo menos 'count' perguntas
-                while (questions.length < count) {
-                    questions.push("Como isso funciona?");
-                }
-                
-                return questions.slice(0, count);
+                return questions.slice(0, totalTests);
             }
             
-            function generateQuestionsFromBriefing(briefingText, count) {
-                if (!briefingText) return [];
+            function generateQuestionsFromBriefing() {
+                if (!extractedText) return [];
                 
                 const questions = [];
-                const sentences = briefingText.split(/[.!?]+/).filter(s => s.trim().length > 10);
+                const sentences = extractedText.split(/[.!?]+/).filter(s => s.trim().length > 10);
                 
-                for (let i = 0; i < Math.min(sentences.length, count); i++) {
+                for (let i = 0; i < Math.min(sentences.length, 5); i++) {
                     const sentence = sentences[i].trim();
                     if (sentence.length > 0) {
                         questions.push(`Explique mais sobre: ${sentence}`);
@@ -709,7 +633,7 @@
                 }
                 
                 // Se não temos perguntas suficientes, adicionar algumas genéricas
-                while (questions.length < count) {
+                while (questions.length < 5) {
                     questions.push("Como isso se relaciona com o contexto fornecido?");
                 }
                 
@@ -723,6 +647,11 @@
             }
             
             function downloadAgent() {
+                if (!generatedPrompt) {
+                    showAlert('Gere um prompt primeiro antes de baixar', 'error');
+                    return;
+                }
+                
                 if (!passwordInput.value.trim()) {
                     showAlert('A senha é obrigatória para baixar o agente', 'error');
                     return;
@@ -733,16 +662,7 @@
                     return;
                 }
                 
-                // Validação básica
-                if (!extractedText && !promptInput.value.trim()) {
-                    showAlert('Por favor, forneça um briefing ou um prompt complementar', 'error');
-                    return;
-                }
-                
                 showAlert('Baixando agente...', 'info');
-                
-                // Combinar texto extraído com prompt complementar
-                const fullPrompt = extractedText + (promptInput.value.trim() ? '\n\n' + promptInput.value : '');
                 
                 // Solicitar download do agente via webhook
                 fetch('https://api.muvecom.com.br/v1/agente-criador/download', {
@@ -753,7 +673,7 @@
                     body: JSON.stringify({
                         password: passwordInput.value,
                         token: tokenInput.value,
-                        text: fullPrompt
+                        prompt: generatedPrompt
                     })
                 })
                 .then(response => response.blob())
