@@ -31,7 +31,7 @@
         
         .container {
             max-width: 1200px;
-            mensagem: 0 auto;
+            margin: 0 auto;
             padding: 20px;
         }
         
@@ -84,6 +84,7 @@
         input[type="text"],
         input[type="password"],
         input[type="file"],
+        input[type="number"],
         textarea {
             width: 100%;
             padding: 12px;
@@ -223,6 +224,14 @@
             border-color: #bee5eb;
         }
         
+        .alert-loading {
+            color: #856404;
+            background-color: #fff3cd;
+            border-color: #ffeaa7;
+            display: flex;
+            align-items: center;
+        }
+        
         .flex-row {
             display: flex;
             gap: 15px;
@@ -285,6 +294,52 @@
             transition: width 0.3s;
         }
         
+        .url-box {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 10px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .url-box a {
+            color: var(--primary-color);
+            text-decoration: none;
+            flex-grow: 1;
+            margin-right: 10px;
+            word-break: break-all;
+        }
+        
+        .url-box a:hover {
+            text-decoration: underline;
+        }
+        
+        .advanced-options {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid var(--warning-color);
+        }
+        
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 10px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
         @media (max-width: 768px) {
             .flex-row, .test-controls {
                 flex-direction: column;
@@ -328,10 +383,44 @@
                 <small>Instruções extras que complementam o briefing principal</small>
             </div>
             
+            <div class="form-group">
+                <label for="password" class="required">Senha para Download</label>
+                <input type="password" id="password" placeholder="Insira a senha para baixar o agente">
+                <small>A senha é necessária para acessar o template do agente</small>
+            </div>
+            
+            <div class="advanced-options">
+                <h4>Opções Avançadas</h4>
+                <div class="flex-row">
+                    <div class="form-group">
+                        <label for="st">Sampling Temperature</label>
+                        <input type="number" id="st" step="0.1" min="0" max="2" value="0.1">
+                        <small>Controla a aleatoriedade (0.1-2.0)</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="tk">Top K</label>
+                        <input type="number" id="tk" step="1" min="1" max="100" value="10">
+                        <small>Número de tokens considerados (1-100)</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="tp">Top P</label>
+                        <input type="number" id="tp" step="0.1" min="0" max="1" value="0.3">
+                        <small>Probabilidade acumulada (0.0-1.0)</small>
+                    </div>
+                </div>
+            </div>
+            
             <div class="test-controls">
                 <button id="generate-btn" class="btn">Gerar Prompt</button>
                 <button id="test-btn" class="btn btn-warning" disabled>Testar Agente</button>
                 <button id="download-btn" class="btn btn-success" disabled>Baixar Agente</button>
+            </div>
+            
+            <div id="generated-prompt-container" class="hidden">
+                <h4>Prompt Gerado:</h4>
+                <div id="generated-prompt" class="extracted-text"></div>
             </div>
         </div>
         
@@ -356,18 +445,16 @@
             <h2 class="card-title">Agente Criado com Sucesso!</h2>
             
             <div class="webhook-url">
-                <p><strong>URL do Webhook para integração:</strong></p>
-                <div class="flex-row">
-                    <input type="text" id="webhook-url" readonly>
-                    <button class="copy-btn" onclick="copyWebhookUrl('webhook-url')">Copiar</button>
+                <p><strong>URLs para integração:</strong></p>
+                
+                <div class="url-box">
+                    <a id="agent-url" href="#">https://api.muvecom.com.br/v1/SUBSTITUIR_POR_TOKEN</a>
+                    <button class="copy-btn" onclick="copyToClipboard('agent-url')">Copiar</button>
                 </div>
-            </div>
-            
-            <div class="webhook-url" style="margin-top: 15px;">
-                <p><strong>URL do Webhook para BI:</strong></p>
-                <div class="flex-row">
-                    <input type="text" id="webhook-bi-url" readonly>
-                    <button class="copy-btn" onclick="copyWebhookUrl('webhook-bi-url')">Copiar</button>
+                
+                <div class="url-box">
+                    <a id="bi-url" href="#">https://api.muvecom.com.br/v1/SUBSTITUIR_POR_TOKEN/bi</a>
+                    <button class="copy-btn" onclick="copyToClipboard('bi-url')">Copiar</button>
                 </div>
             </div>
         </div>
@@ -383,6 +470,10 @@
             const briefingInput = document.getElementById('briefing');
             const tokenInput = document.getElementById('token');
             const promptInput = document.getElementById('prompt');
+            const passwordInput = document.getElementById('password');
+            const stInput = document.getElementById('st');
+            const tkInput = document.getElementById('tk');
+            const tpInput = document.getElementById('tp');
             const generateBtn = document.getElementById('generate-btn');
             const testBtn = document.getElementById('test-btn');
             const downloadBtn = document.getElementById('download-btn');
@@ -395,9 +486,11 @@
             const alertArea = document.getElementById('alert-area');
             const extractedTextContainer = document.getElementById('extracted-text-container');
             const extractedTextElement = document.getElementById('extracted-text');
+            const generatedPromptContainer = document.getElementById('generated-prompt-container');
+            const generatedPromptElement = document.getElementById('generated-prompt');
             const downloadSuccess = document.getElementById('download-success');
-            const webhookUrlInput = document.getElementById('webhook-url');
-            const webhookBiUrlInput = document.getElementById('webhook-bi-url');
+            const agentUrlElement = document.getElementById('agent-url');
+            const biUrlElement = document.getElementById('bi-url');
             
             // Variáveis de estado
             let generatedPrompt = '';
@@ -463,7 +556,7 @@
                     return;
                 }
                 
-                showAlert('Gerando prompt a partir do briefing...', 'info');
+                showLoadingAlert('Gerando prompt a partir do briefing...');
                 
                 // Combinar texto extraído com prompt complementar
                 const fullPrompt = extractedText + (promptInput.value.trim() ? '\n\n' + promptInput.value : '');
@@ -488,6 +581,11 @@
                 .then(data => {
                     if (data.success) {
                         generatedPrompt = data.generatedPrompt;
+                        
+                        // Mostrar prompt gerado
+                        generatedPromptElement.textContent = generatedPrompt;
+                        generatedPromptContainer.classList.remove('hidden');
+                        
                         showAlert('Prompt gerado com sucesso! Agora você pode testar o agente.', 'success');
                         
                         // Habilitar botões de teste e download
@@ -556,6 +654,8 @@
                 currentTestIndex = index;
                 updateProgressBar();
                 
+                const extractedText = extractedTextElement.textContent;
+                
                 // Enviar requisição para o webhook de teste
                 fetch('https://api.muvecom.com.br/v1/agente-criador/test', {
                     method: 'POST',
@@ -564,7 +664,11 @@
                     },
                     body: JSON.stringify({
                         prompt: generatedPrompt,
+                        briefing: extractedText,
                         token: tokenInput.value,
+                        st: parseFloat(stInput.value),
+                        tk: parseInt(tkInput.value),
+                        tp: parseFloat(tpInput.value),
                         iteration: index
                     })
                 })
@@ -583,9 +687,30 @@
                 })
                 .then(data => {
                     if (data && data.success) {
-                        // Exibir tanto a pergunta quanto a resposta retornadas pelo backend
-                        addMessage('Testador', data.question, 'user');
-                        addMessage('Agente', data.response, 'ai');
+                        // Processar a resposta que pode conter múltiplas mensagens separadas por ||
+                        if (data.response && data.response.includes('||')) {
+                            const messages = data.response.split('||');
+                            messages.forEach(msg => {
+                                const trimmedMsg = msg.trim();
+                                if (trimmedMsg) {
+                                    // Determinar se é do usuário ou do agente com base no conteúdo
+                                    if (trimmedMsg.toLowerCase().includes('pergunta') || 
+                                        trimmedMsg.toLowerCase().includes('testador')) {
+                                        addMessage('Testador', trimmedMsg, 'user');
+                                    } else {
+                                        addMessage('Agente', trimmedMsg, 'ai');
+                                    }
+                                }
+                            });
+                        } else {
+                            // Exibir tanto a pergunta quanto a resposta retornadas pelo backend
+                            if (data.question) {
+                                addMessage('Testador', data.question, 'user');
+                            }
+                            if (data.response) {
+                                addMessage('Agente', data.response, 'ai');
+                            }
+                        }
                         
                         // Aguardar um pouco antes da próxima iteração
                         setTimeout(() => {
@@ -620,12 +745,17 @@
                     return;
                 }
                 
+                if (!passwordInput.value.trim()) {
+                    showAlert('A senha é obrigatória para baixar o agente', 'error');
+                    return;
+                }
+                
                 if (!tokenInput.value.trim()) {
                     showAlert('O token é obrigatório', 'error');
                     return;
                 }
                 
-                showAlert('Baixando agente...', 'info');
+                showLoadingAlert('Baixando agente...');
                 
                 // Solicitar download do agente via webhook
                 fetch('https://api.muvecom.com.br/v1/agente-criador/download', {
@@ -634,6 +764,7 @@
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
+                        password: passwordInput.value,
                         token: tokenInput.value,
                         prompt: generatedPrompt
                     })
@@ -655,10 +786,16 @@
                     a.click();
                     window.URL.revokeObjectURL(url);
                     
-                    // Mostrar URLs do webhook
-                    const baseUrl = `https://api.muvecom.com.br/v1/${tokenInput.value}`;
-                    webhookUrlInput.value = baseUrl;
-                    webhookBiUrlInput.value = `${baseUrl}/bi`;
+                    // Mostrar URLs do webhook com o token substituído
+                    const agentUrl = `https://api.muvecom.com.br/v1/${tokenInput.value}`;
+                    const biUrl = `https://api.muvecom.com.br/v1/${tokenInput.value}/bi`;
+                    
+                    agentUrlElement.textContent = agentUrl;
+                    agentUrlElement.href = agentUrl;
+                    
+                    biUrlElement.textContent = biUrl;
+                    biUrlElement.href = biUrl;
+                    
                     downloadSuccess.classList.remove('hidden');
                     
                     showAlert('Agente baixado com sucesso!', 'success');
@@ -702,8 +839,14 @@
                     alert.classList.add('alert-danger');
                 } else if (type === 'success') {
                     alert.classList.add('alert-success');
-                } else {
+                } else if (type === 'info') {
                     alert.classList.add('alert-info');
+                } else if (type === 'loading') {
+                    alert.classList.add('alert-loading');
+                    alert.innerHTML = `<span class="spinner"></span> ${message}`;
+                    alertArea.innerHTML = '';
+                    alertArea.appendChild(alert);
+                    return;
                 }
                 
                 alert.textContent = message;
@@ -711,17 +854,28 @@
                 alertArea.innerHTML = '';
                 alertArea.appendChild(alert);
                 
-                // Remover alerta após 5 segundos
-                setTimeout(() => {
-                    alert.remove();
-                }, 5000);
+                // Remover alerta após 5 segundos (exceto loading)
+                if (type !== 'loading') {
+                    setTimeout(() => {
+                        alert.remove();
+                    }, 5000);
+                }
             }
             
-            window.copyWebhookUrl = function(elementId) {
+            function showLoadingAlert(message) {
+                showAlert(message, 'loading');
+            }
+            
+            window.copyToClipboard = function(elementId) {
                 const element = document.getElementById(elementId);
-                element.select();
-                document.execCommand('copy');
-                showAlert('URL copiada para a área de transferência!', 'success');
+                const text = element.textContent;
+                
+                navigator.clipboard.writeText(text).then(() => {
+                    showAlert('URL copiada para a área de transferência!', 'success');
+                }).catch(err => {
+                    console.error('Erro ao copiar texto: ', err);
+                    showAlert('Erro ao copiar URL', 'error');
+                });
             };
         });
     </script>
