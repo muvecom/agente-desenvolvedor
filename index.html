@@ -359,9 +359,16 @@
                 <p><strong>URL do Webhook para integração:</strong></p>
                 <div class="flex-row">
                     <input type="text" id="webhook-url" readonly>
-                    <button class="copy-btn" onclick="copyWebhookUrl()">Copiar</button>
+                    <button class="copy-btn" onclick="copyWebhookUrl('webhook-url')">Copiar</button>
                 </div>
-                <small>Use esta URL para integrar o agente em seus sistemas</small>
+            </div>
+            
+            <div class="webhook-url" style="margin-top: 15px;">
+                <p><strong>URL do Webhook para BI:</strong></p>
+                <div class="flex-row">
+                    <input type="text" id="webhook-bi-url" readonly>
+                    <button class="copy-btn" onclick="copyWebhookUrl('webhook-bi-url')">Copiar</button>
+                </div>
             </div>
         </div>
         
@@ -390,6 +397,7 @@
             const extractedTextElement = document.getElementById('extracted-text');
             const downloadSuccess = document.getElementById('download-success');
             const webhookUrlInput = document.getElementById('webhook-url');
+            const webhookBiUrlInput = document.getElementById('webhook-bi-url');
             
             // Variáveis de estado
             let chatHistory = [];
@@ -547,7 +555,7 @@
                 updateProgressBar();
                 
                 const question = questions[index];
-                addMessage('Sistema', `Pergunta ${index + 1}/${questions.length}: ${question}`, 'system');
+                addMessage('Testador', question, 'user');
                 
                 // Enviar pergunta para o webhook de teste
                 fetch('https://api.muvecom.com.br/v1/agente-criador/test', {
@@ -564,6 +572,7 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
+                        // Exibir tanto a pergunta quanto a resposta
                         addMessage('Agente', data.response, 'ai');
                         
                         // Aguardar um pouco antes da próxima pergunta
@@ -688,9 +697,10 @@
                     a.click();
                     window.URL.revokeObjectURL(url);
                     
-                    // Mostrar URL do webhook
-                    const webhookUrl = `https://api.muvecom.com.br/v1/${tokenInput.value}`;
-                    webhookUrlInput.value = webhookUrl;
+                    // Mostrar URLs do webhook
+                    const baseUrl = `https://api.muvecom.com.br/v1/${tokenInput.value}`;
+                    webhookUrlInput.value = baseUrl;
+                    webhookBiUrlInput.value = `${baseUrl}/bi`;
                     downloadSuccess.classList.remove('hidden');
                     
                     showAlert('Agente baixado com sucesso!', 'success');
@@ -749,8 +759,9 @@
                 }, 5000);
             }
             
-            window.copyWebhookUrl = function() {
-                webhookUrlInput.select();
+            window.copyWebhookUrl = function(elementId) {
+                const element = document.getElementById(elementId);
+                element.select();
                 document.execCommand('copy');
                 showAlert('URL copiada para a área de transferência!', 'success');
             };
