@@ -164,6 +164,7 @@
             padding: 10px 15px;
             border-radius: 18px;
             max-width: 80%;
+            position: relative;
         }
         
         .user-message {
@@ -186,6 +187,12 @@
             font-style: italic;
             border-radius: 8px;
             max-width: 90%;
+        }
+        
+        .message-sender {
+            font-weight: bold;
+            font-size: 0.85rem;
+            margin-bottom: 5px;
         }
         
         .test-controls {
@@ -285,6 +292,34 @@
             transition: width 0.3s;
         }
         
+        .typing-indicator {
+            display: inline-block;
+            background-color: #e9e9e9;
+            padding: 10px 15px;
+            border-radius: 18px;
+            border-bottom-left-radius: 4px;
+            margin-bottom: 15px;
+        }
+        
+        .typing-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #777;
+            margin: 0 3px;
+            animation: typingAnimation 1.4s infinite ease-in-out;
+        }
+        
+        .typing-dot:nth-child(1) { animation-delay: 0s; }
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+        
+        @keyframes typingAnimation {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-5px); }
+        }
+        
         @media (max-width: 768px) {
             .flex-row, .test-controls {
                 flex-direction: column;
@@ -326,6 +361,12 @@
                 <label for="prompt">Prompt Complementar (opcional)</label>
                 <textarea id="prompt" placeholder="Insira instruções adicionais para o agente"></textarea>
                 <small>Instruções extras que complementam o briefing principal</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="password" class="required">Senha para Download</label>
+                <input type="password" id="password" placeholder="Insira a senha para download">
+                <small>Senha necessária para baixar o agente</small>
             </div>
             
             <div class="test-controls">
@@ -383,6 +424,7 @@
             const briefingInput = document.getElementById('briefing');
             const tokenInput = document.getElementById('token');
             const promptInput = document.getElementById('prompt');
+            const passwordInput = document.getElementById('password');
             const generateBtn = document.getElementById('generate-btn');
             const testBtn = document.getElementById('test-btn');
             const downloadBtn = document.getElementById('download-btn');
@@ -479,7 +521,20 @@
                         token: tokenInput.value
                     })
                 })
-                .then(response => response.json())
+                .then(async response => {
+                    const responseText = await response.text();
+                    
+                    if (!responseText.trim()) {
+                        throw new Error('Resposta vazia do servidor');
+                    }
+                    
+                    if (!isValidJSON(responseText)) {
+                        console.error('Resposta JSON inválida:', responseText);
+                        throw new Error('Resposta inválida do servidor');
+                    }
+                    
+                    return JSON.parse(responseText);
+                })
                 .then(data => {
                     if (data.success) {
                         generatedPrompt = data.generatedPrompt;
@@ -489,12 +544,12 @@
                         testBtn.disabled = false;
                         downloadBtn.disabled = false;
                     } else {
-                        showAlert('Erro ao gerar prompt: ' + data.message, 'error');
+                        showAlert('Erro ao gerar prompt: ' + (data.message || 'Erro desconhecido'), 'error');
                     }
                 })
                 .catch(error => {
                     console.error('Erro:', error);
-                    showAlert('Erro ao conectar com o servidor', 'error');
+                    showAlert('Erro ao conectar com o servidor: ' + error.message, 'error');
                 });
             }
             
@@ -557,6 +612,9 @@
                 const question = questions[index];
                 addMessage('Testador', question, 'user');
                 
+                // Mostrar indicador de digitação
+                const typingIndicator = showTypingIndicator();
+                
                 // Enviar pergunta para o webhook de teste
                 fetch('https://api.muvecom.com.br/v1/agente-criador/test', {
                     method: 'POST',
@@ -569,9 +627,27 @@
                         token: tokenInput.value
                     })
                 })
-                .then(response => response.json())
+                .then(async response => {
+                    // Remover indicador de digitação
+                    removeTypingIndicator(typingIndicator);
+                    
+                    // Verificar se a resposta está vazia
+                    const responseText = await response.text();
+                    
+                    if (!responseText.trim()) {
+                        throw new Error('Resposta vazia do servidor');
+                    }
+                    
+                    // Tentar fazer parsing do JSON
+                    try {
+                        return JSON.parse(responseText);
+                    } catch (e) {
+                        console.error('Erro ao parsear JSON:', e, 'Resposta:', responseText);
+                        throw new Error('Resposta inválida do servidor: ' + responseText.substring(0, 100));
+                    }
+                })
                 .then(data => {
-                    if (data.success) {
+                    if (data && data.success) {
                         // Exibir tanto a pergunta quanto a resposta
                         addMessage('Agente', data.response, 'ai');
                         
@@ -580,7 +656,8 @@
                             processNextTestQuestion(questions, index + 1);
                         }, 1000);
                     } else {
-                        addMessage('Sistema', 'Erro: ' + data.message, 'system');
+                        const errorMsg = data && data.message ? data.message : 'Resposta inválida do servidor';
+                        addMessage('Sistema', 'Erro: ' + errorMsg, 'system');
                         setTimeout(() => {
                             processNextTestQuestion(questions, index + 1);
                         }, 1000);
@@ -588,7 +665,8 @@
                 })
                 .catch(error => {
                     console.error('Erro:', error);
-                    addMessage('Sistema', 'Erro ao conectar com o servidor', 'system');
+                    removeTypingIndicator(typingIndicator);
+                    addMessage('Sistema', 'Erro: ' + error.message, 'system');
                     setTimeout(() => {
                         processNextTestQuestion(questions, index + 1);
                     }, 1000);
@@ -685,7 +763,12 @@
                         prompt: generatedPrompt
                     })
                 })
-                .then(response => response.blob())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Erro no servidor: ' + response.status);
+                    }
+                    return response.blob();
+                })
                 .then(blob => {
                     // Criar um link para download do arquivo
                     const url = window.URL.createObjectURL(blob);
@@ -707,7 +790,7 @@
                 })
                 .catch(error => {
                     console.error('Erro:', error);
-                    showAlert('Erro ao baixar o agente', 'error');
+                    showAlert('Erro ao baixar o agente: ' + error.message, 'error');
                 });
             }
             
@@ -723,10 +806,11 @@
                     messageElement.classList.add('system-message');
                 }
                 
-                const senderElement = document.createElement('strong');
-                senderElement.textContent = sender + ': ';
+                const senderElement = document.createElement('div');
+                senderElement.classList.add('message-sender');
+                senderElement.textContent = sender;
                 
-                const textElement = document.createElement('span');
+                const textElement = document.createElement('div');
                 textElement.textContent = text;
                 
                 messageElement.appendChild(senderElement);
@@ -734,6 +818,9 @@
                 
                 chatContainer.appendChild(messageElement);
                 chatContainer.scrollTop = chatContainer.scrollHeight;
+                
+                // Adicionar ao histórico
+                chatHistory.push({ sender, text, type });
             }
             
             function showAlert(message, type) {
@@ -757,6 +844,38 @@
                 setTimeout(() => {
                     alert.remove();
                 }, 5000);
+            }
+            
+            function showTypingIndicator() {
+                const indicator = document.createElement('div');
+                indicator.classList.add('typing-indicator');
+                indicator.id = 'typing-indicator';
+                
+                indicator.innerHTML = `
+                    <span class="typing-dot"></span>
+                    <span class="typing-dot"></span>
+                    <span class="typing-dot"></span>
+                `;
+                
+                chatContainer.appendChild(indicator);
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+                
+                return indicator;
+            }
+            
+            function removeTypingIndicator(indicator) {
+                if (indicator && indicator.parentNode) {
+                    indicator.parentNode.removeChild(indicator);
+                }
+            }
+            
+            function isValidJSON(str) {
+                try {
+                    JSON.parse(str);
+                    return true;
+                } catch (e) {
+                    return false;
+                }
             }
             
             window.copyWebhookUrl = function(elementId) {
