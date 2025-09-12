@@ -23,9 +23,6 @@ Este campo permite o upload de um documento DOCX contendo instruções detalhada
 - Inclua exemplos de interações esperadas
 - Defina claramente o tom de voz e personalidade desejados
 
-![Campo de Upload do Briefing](https://i.imgur.com/example2.png)
-*Seção de upload do documento de briefing*
-
 ### 2. Token de Acesso *
 
 **Descrição:**  
