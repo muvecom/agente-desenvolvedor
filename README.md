@@ -2,7 +2,7 @@
 
 ## Visão Geral
 
-Esta ferramenta permite a criação de agentes de IA especializados para atendimento, desenvolvida para uso interno da Muvecom. Através de uma interface intuitiva, é possível configurar, testar e baixar agentes personalizados que se integram com as APIs da plataforma.
+Esta ferramenta permite a criação de agentes de IA especializados para atendimento, desenvolvida para uso interno da Muvecom. Através de uma interface intuitiva, é possível configurar, testar e baixar agentes personalizados que se integram com as APIs da plataforma. Ele também conta com um agente de BI integrado a um segundo webhook, no mesmo arquivo que é baixado o agente no final.
 
 ## Campos de Configuração
 
