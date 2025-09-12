@@ -82,6 +82,9 @@ Permite testar o agente antes do download final, verificando seu comportamento c
 ### Baixar Agente
 Disponibiliza o agente para download após a inserção da senha de autorização fornecida pelos administradores.
 
+OBS: Ao baixar, você verá duas URLs para copiar, dos webhooks dos agentes de atendimento e BI, ao fim da página, como na imagem abaixo
+<img width="1160" height="298" alt="2025-09-11-232654_1160x298_scrot" src="https://github.com/user-attachments/assets/3874c4d8-3943-4e35-9fb8-837d8437d822" />
+
 ## Fluxo de Trabalho Recomendado
 
 1. Preparar o documento DOCX com o briefing completo
