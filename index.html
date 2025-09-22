@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Agente Criador</title>
+    <title>Agente Desenvolvedor</title>
     <style>
         :root {
             --primary-color: #4a6fa5;
@@ -352,7 +352,7 @@
 <body>
     <div class="container">
         <header>
-            <h1>Agente Criador</h1>
+            <h1>Agente Desenvolvedor</h1>
             <p class="description">Crie e teste agentes de IA com base em briefings e prompts personalizados</p>
         </header>
         
@@ -460,7 +460,7 @@
         </div>
         
         <footer>
-            <p>Agente Criador &copy; 2023 - Todos os direitos reservados</p>
+            <p>Agente Desenvolvedor &copy; 2023 - Todos os direitos reservados</p>
         </footer>
     </div>
 
@@ -562,7 +562,7 @@
                 const fullPrompt = extractedText + (promptInput.value.trim() ? '\n\n' + promptInput.value : '');
                 
                 // Chamar o webhook para gerar o prompt
-                fetch('https://api.muvecom.com.br/v1/agente-criador/generate', {
+                fetch('https://api.muvecom.com.br/v1/agente-desenvolvedor/generate', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -657,7 +657,7 @@
                 const extractedText = extractedTextElement.textContent;
                 
                 // Enviar requisição para o webhook de teste
-                fetch('https://api.muvecom.com.br/v1/agente-criador/test', {
+                fetch('https://api.muvecom.com.br/v1/agente-desenvolvedor/test', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -758,7 +758,7 @@
                 showLoadingAlert('Baixando agente...');
                 
                 // Solicitar download do agente via webhook
-                fetch('https://api.muvecom.com.br/v1/agente-criador/download', {
+                fetch('https://api.muvecom.com.br/v1/agente-desenvolvedor/download', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
